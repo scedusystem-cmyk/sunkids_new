@@ -203,9 +203,87 @@ filtered_df = filtered_df.sort_values(['Date', 'Time'])
 # 顯示模式切換
 # ============================================
 
-tab1, tab2 = st.tabs(["📋 列表檢視", "📊 統計分析"])
+tab1, tab2, tab3 = st.tabs(["📅 週檢視（行事曆）", "📋 列表檢視", "📊 統計分析"])
 
 with tab1:
+    st.subheader("週行事曆檢視")
+    
+    if len(filtered_df) == 0:
+        st.warning("沒有符合條件的課程")
+    else:
+        # 取得日期範圍內的所有日期
+        filtered_df['Date_obj'] = pd.to_datetime(filtered_df['Date'])
+        min_date = filtered_df['Date_obj'].min()
+        max_date = filtered_df['Date_obj'].max()
+        
+        # 計算週數
+        current_date = min_date
+        weeks = []
+        
+        while current_date <= max_date:
+            week_start = current_date - timedelta(days=current_date.weekday())
+            week_end = week_start + timedelta(days=6)
+            weeks.append((week_start, week_end))
+            current_date = week_end + timedelta(days=1)
+        
+        # 顯示每一週
+        for week_start, week_end in weeks:
+            st.markdown(f"### 📆 {week_start.strftime('%Y/%m/%d')} - {week_end.strftime('%m/%d')}")
+            
+            # 建立 7 欄（週一到週日）
+            cols = st.columns(7)
+            
+            for i in range(7):
+                day = week_start + timedelta(days=i)
+                day_str = day.strftime('%Y-%m-%d')
+                weekday_name = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'][i]
+                
+                with cols[i]:
+                    # 日期標題
+                    st.markdown(f"**{day.strftime('%m/%d')} {weekday_name}**")
+                    
+                    # 該日的課程
+                    day_classes = filtered_df[filtered_df['Date'] == day_str].sort_values('Time')
+                    
+                    if len(day_classes) == 0:
+                        st.markdown("_無課程_")
+                    else:
+                        for _, row in day_classes.iterrows():
+                            # 根據狀態設定顏色
+                            if row['Status'] == '正常':
+                                color = "#d4edda"
+                                border_color = "#28a745"
+                            elif row['Status'] == '已完成':
+                                color = "#fff3cd"
+                                border_color = "#ffc107"
+                            elif row['Status'] == '停課':
+                                color = "#f8d7da"
+                                border_color = "#dc3545"
+                            else:
+                                color = "#e9ecef"
+                                border_color = "#6c757d"
+                            
+                            # 顯示課程卡片
+                            st.markdown(f"""
+                            <div style="
+                                background-color: {color};
+                                border-left: 4px solid {border_color};
+                                padding: 8px;
+                                margin-bottom: 8px;
+                                border-radius: 4px;
+                                font-size: 12px;
+                            ">
+                                <div style="font-weight: bold; color: #212529;">{row['Time']}</div>
+                                <div style="color: #495057;">{row['Class_Name']}</div>
+                                <div style="color: #6c757d;">👨‍🏫 {row['Teacher_Name']}</div>
+                                <div style="color: #6c757d;">📚 {row['Book_Name']}</div>
+                                {f"<div style='color: #6c757d;'>📖 {row['Chapters']}</div>" if row['Chapters'] != '-' else ''}
+                            </div>
+                            """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+
+with tab2:
     st.subheader("課程列表")
     
     # 顯示篩選後的資料
@@ -250,7 +328,7 @@ with tab1:
         
         st.caption(f"📊 顯示 {len(filtered_df)} 筆課程")
 
-with tab2:
+with tab3:
     st.subheader("統計分析")
     
     col1, col2 = st.columns(2)
