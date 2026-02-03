@@ -317,29 +317,16 @@ if view_mode == "月":
                     date_str = f"{current_date.year}-{current_date.month:02d}-{day:02d}"
                     day_classes = filtered_df[filtered_df['Date'] == date_str]
                     
-                    content = f"<div style='min-height: 120px; border: 1px solid #dee2e6; padding: 8px;'>"
-                    content += f"<div style='font-weight: bold; margin-bottom: 8px;'>{day}</div>"
-                    
+                    # 建立格子內容
+                    cards_html = ""
                     if len(day_classes) > 0:
                         for _, row in day_classes.iterrows():
                             color = DIFFICULTY_COLORS[row['Difficulty']]
-                            content += f"""
-                            <div style='
-                                background-color: {color};
-                                color: {TEXT_COLOR};
-                                padding: 6px;
-                                margin-bottom: 6px;
-                                border-radius: 4px;
-                                font-size: 15px;
-                                font-weight: 600;
-                                cursor: pointer;
-                            '>
-                                {row['Class_Name']}
-                            </div>
-                            """
+                            cards_html += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 6px; margin-bottom: 6px; border-radius: 4px; font-size: 15px; font-weight: 600;'>{row['Class_Name']}</div>"
                     
-                    content += "</div>"
-                    st.markdown(content, unsafe_allow_html=True)
+                    # 完整格子 HTML
+                    cell_html = f"<div style='min-height: 120px; border: 1px solid #dee2e6; padding: 8px;'><div style='font-weight: bold; margin-bottom: 8px;'>{day}</div>{cards_html}</div>"
+                    st.markdown(cell_html, unsafe_allow_html=True)
 
 # ============================================
 # 週檢視
