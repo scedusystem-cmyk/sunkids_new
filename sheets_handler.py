@@ -120,6 +120,7 @@ def write_master_schedule(df):
     """
     寫入 Master_Schedule 工作表
     完全覆寫（含表頭）
+    用於「同步所有課綱路線」按鈕
     """
     try:
         spreadsheet = get_spreadsheet()
@@ -144,6 +145,36 @@ def write_master_schedule(df):
     
     except Exception as e:
         st.error(f"❌ 寫入 Master_Schedule 失敗: {str(e)}")
+        return False
+
+def append_master_schedule(df):
+    """
+    追加課程至 Master_Schedule 工作表
+    不清空現有資料，只新增新課程
+    用於「新增課綱路線」
+    """
+    try:
+        spreadsheet = get_spreadsheet()
+        if not spreadsheet:
+            return False
+        
+        worksheet = spreadsheet.worksheet("Master_Schedule")
+        
+        # 取得表頭
+        headers = worksheet.row_values(1)
+        
+        # 確保 DataFrame 欄位順序與 Google Sheets 表頭一致
+        df_ordered = df[headers] if all(col in df.columns for col in headers) else df
+        
+        # 追加資料（不清空）
+        for _, row in df_ordered.iterrows():
+            worksheet.append_row(row.tolist())
+        
+        st.success(f"✅ 成功新增 {len(df)} 筆課程")
+        return True
+    
+    except Exception as e:
+        st.error(f"❌ 追加 Master_Schedule 失敗: {str(e)}")
         return False
 
 def append_lesson_log(log_data):

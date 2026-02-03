@@ -138,19 +138,15 @@ def show_create_courseline_dialog():
             help="第一次上課的日期"
         )
         
-        # 起始教材
-        syllabus_sequences = df_syllabus[df_syllabus['SyllabusID'] == syllabus_id].sort_values('Sequence')
-        sequence_options = {}
-        for _, row in syllabus_sequences.iterrows():
-            key = f"{row['Sequence']} - {row['Book_Full_Name']}"
-            sequence_options[key] = row['Sequence']
+        # 檢查開課日期與上課星期是否一致
+        start_weekday = start_date.weekday() + 1  # Python: 0=週一, 轉換為 1=週一
+        if start_weekday == 7:
+            start_weekday = 7  # 週日
         
-        selected_sequence_key = st.selectbox(
-            "起始教材 *",
-            options=list(sequence_options.keys()),
-            help="從哪個教材開始上課"
-        )
-        start_sequence = sequence_options[selected_sequence_key]
+        if weekday != start_weekday:
+            weekday_names = {1: "週一", 2: "週二", 3: "週三", 4: "週四", 5: "週五", 6: "週六", 7: "週日"}
+            st.warning(f"⚠️ 注意：開課日期（{start_date.strftime('%Y-%m-%d')}）是 {weekday_names[start_weekday]}，但上課星期設定為 {weekday_names[weekday]}")
+            st.info(f"💡 系統會自動從開課日期後的第一個「{weekday_names[weekday]}」開始上課")
         
         # 備註
         note = st.text_area(
@@ -177,7 +173,7 @@ def show_create_courseline_dialog():
             # 產生 CourseLineID
             courseline_id = generate_courseline_id(df_courseline)
             
-            # 建立課綱路線資料
+            # 建立課綱路線資料（固定從第 1 個教材開始）
             courseline_data = {
                 'CourseLineID': courseline_id,
                 'CourseName': course_name,
@@ -187,7 +183,7 @@ def show_create_courseline_dialog():
                 'Classroom': classroom,
                 'Teacher_ID': teacher_id,
                 'Start_Date': start_date.strftime('%Y-%m-%d'),
-                'Start_Sequence': start_sequence,
+                'Start_Sequence': 1,  # 固定從第 1 個教材開始
                 'Status': '進行中',
                 'Note': note
             }
@@ -206,12 +202,12 @@ def show_create_courseline_dialog():
                     )
                     
                     if len(schedule) > 0:
-                        # 寫入 Master_Schedule
-                        write_success = write_master_schedule(schedule)
+                        # 追加至 Master_Schedule（不覆蓋現有資料）
+                        from sheets_handler import append_master_schedule
+                        write_success = append_master_schedule(schedule)
                         
                         if write_success:
                             st.success(f"✅ 成功建立課綱路線：{courseline_id}")
-                            st.success(f"✅ 已產生 {len(schedule)} 筆未來課程")
                             
                             # 清除快取
                             clear_cache()
