@@ -249,6 +249,9 @@ with col_title1:
         else:
             # 昨天
             st.session_state.current_date = st.session_state.current_date - timedelta(days=1)
+        
+        # 清除快取並重新載入
+        load_mock_data.clear()
         st.rerun()
 
 with col_title2:
@@ -283,6 +286,9 @@ with col_title3:
         else:
             # 明天
             st.session_state.current_date = st.session_state.current_date + timedelta(days=1)
+        
+        # 清除快取並重新載入
+        load_mock_data.clear()
         st.rerun()
 
 st.markdown("---")
@@ -364,68 +370,25 @@ elif view_mode == "週":
         if has_class:
             active_time_slots.append(time_slot)
     
-    st.markdown("""
-    <style>
-    .week-grid {
-        display: grid;
-        grid-template-columns: 100px repeat(7, 1fr);
-        gap: 1px;
-        background-color: #dee2e6;
-        border: 1px solid #dee2e6;
-    }
-    .time-label {
-        background-color: #f8f9fa;
-        padding: 12px;
-        text-align: center;
-        font-size: 18px;
-        font-weight: 600;
-        color: #000000;
-    }
-    .day-header {
-        background-color: #ffffff;
-        padding: 16px;
-        text-align: center;
-        font-weight: bold;
-        font-size: 16px;
-        border-bottom: 2px solid #dee2e6;
-    }
-    .time-slot {
-        background-color: #ffffff;
-        min-height: 80px;
-        padding: 6px;
-        position: relative;
-    }
-    .class-card {
-        padding: 10px;
-        border-radius: 4px;
-        margin-bottom: 6px;
-        font-size: 15px;
-        cursor: pointer;
-        border-left: 4px solid rgba(0,0,0,0.3);
-        font-weight: 600;
-    }
-    .class-card:hover {
-        opacity: 0.8;
-    }
-    .class-info {
-        font-size: 13px;
-        font-weight: 500;
-        margin-top: 4px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    header_html = "<div class='week-grid'>"
-    header_html += "<div class='time-label'>時間</div>"
-    for date in week_dates:
+    # 使用 Streamlit 原生表格而非 HTML
+    # 建立表頭
+    cols_header = st.columns([1] + [3]*7)
+    cols_header[0].markdown("**時間**")
+    for i, date in enumerate(week_dates):
         weekday = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'][date.weekday()]
-        header_html += f"<div class='day-header'>{date.month}/{date.day}<br>{weekday}</div>"
+        cols_header[i+1].markdown(f"**{date.month}/{date.day} {weekday}**")
     
-    # 只顯示有課程的時段
+    st.markdown("---")
+    
+    # 建立每個時段的行
     for time_slot in active_time_slots:
-        header_html += f"<div class='time-label'>{time_slot}</div>"
+        cols = st.columns([1] + [3]*7)
         
-        for date in week_dates:
+        # 時間標籤
+        cols[0].markdown(f"**{time_slot}**")
+        
+        # 每一天的課程
+        for i, date in enumerate(week_dates):
             date_str = date.strftime('%Y-%m-%d')
             
             slot_classes = filtered_df[
@@ -433,23 +396,26 @@ elif view_mode == "週":
                 (filtered_df['Time'].str.startswith(time_slot.split(':')[0]))
             ]
             
-            header_html += "<div class='time-slot'>"
-            
             if len(slot_classes) > 0:
-                for _, row in slot_classes.iterrows():
-                    color = DIFFICULTY_COLORS[row['Difficulty']]
-                    header_html += f"""
-                    <div class='class-card' style='background-color: {color}; color: {TEXT_COLOR};'>
-                        <div>{row['Class_Name']}</div>
-                        <div class='class-info'>世界線{row['World_Line']} | {row['Teacher']}</div>
-                        <div class='class-info'>{row['Book']}</div>
-                    </div>
-                    """
-            
-            header_html += "</div>"
-    
-    header_html += "</div>"
-    st.markdown(header_html, unsafe_allow_html=True)
+                with cols[i+1]:
+                    for _, row in slot_classes.iterrows():
+                        color = DIFFICULTY_COLORS[row['Difficulty']]
+                        st.markdown(f"""
+                        <div style='
+                            background-color: {color};
+                            color: {TEXT_COLOR};
+                            padding: 10px;
+                            border-radius: 4px;
+                            margin-bottom: 6px;
+                            border-left: 4px solid rgba(0,0,0,0.3);
+                        '>
+                            <div style='font-weight: 600; font-size: 15px;'>{row['Class_Name']}</div>
+                            <div style='font-size: 13px; margin-top: 4px;'>世界線{row['World_Line']} | {row['Teacher']}</div>
+                            <div style='font-size: 13px;'>{row['Book']}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+        
+        st.markdown("---")
 
 # ============================================
 # 日檢視
@@ -464,82 +430,43 @@ else:
     if len(day_classes) == 0:
         st.info("📭 今日無課程")
     else:
-        time_slots = [f"{h:02d}:00" for h in range(8, 22)]
-        
-        st.markdown("""
-        <style>
-        .day-timeline {
-            position: relative;
-            padding-left: 100px;
-        }
-        .time-marker {
-            position: absolute;
-            left: 0;
-            width: 80px;
-            text-align: right;
-            padding-right: 15px;
-            font-size: 12px;
-            color: #6c757d;
-        }
-        .timeline-slot {
-            border-left: 2px solid #dee2e6;
-            min-height: 80px;
-            padding-left: 20px;
-            margin-bottom: 0;
-        }
-        .day-class-card {
-            background-color: white;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 16px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-left: 6px solid;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        timeline_html = "<div class='day-timeline'>"
-        
-        for time_slot in time_slots:
-            timeline_html += f"<div class='time-marker' style='top: 0;'>{time_slot}</div>"
-            timeline_html += "<div class='timeline-slot'>"
+        for _, row in day_classes.iterrows():
+            color = DIFFICULTY_COLORS[row['Difficulty']]
             
-            slot_classes = day_classes[day_classes['Time'].str.startswith(time_slot.split(':')[0])]
-            
-            if len(slot_classes) > 0:
-                for _, row in slot_classes.iterrows():
-                    color = DIFFICULTY_COLORS[row['Difficulty']]
-                    timeline_html += f"""
-                    <div class='day-class-card' style='border-left-color: {color};'>
-                        <div style='display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;'>
-                            <div>
-                                <div style='font-size: 20px; font-weight: bold; margin-bottom: 4px;'>{row['Class_Name']}</div>
-                                <div style='color: #6c757d; font-size: 14px;'>世界線 {row['World_Line']} | 難易度 LV{row['Difficulty']}</div>
-                            </div>
-                            <div style='text-align: right;'>
-                                <div style='font-size: 18px; font-weight: bold;'>{row['Time']}</div>
-                            </div>
-                        </div>
-                        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; background-color: #f8f9fa; border-radius: 4px;'>
-                            <div>
-                                <div style='font-size: 12px; color: #6c757d; margin-bottom: 4px;'>👨‍🏫 講師</div>
-                                <div style='font-weight: bold;'>{row['Teacher']}</div>
-                            </div>
-                            <div>
-                                <div style='font-size: 12px; color: #6c757d; margin-bottom: 4px;'>📚 教材</div>
-                                <div style='font-weight: bold;'>{row['Book']}</div>
-                            </div>
-                        </div>
-                        <div style='margin-top: 12px; padding: 8px; background-color: {color}; border-radius: 4px;'>
-                            <div style='font-size: 12px; color: #495057;'>📝 今日課程內容：Unit 3 - Colors and Shapes</div>
-                        </div>
+            # 課程卡片
+            st.markdown(f"""
+            <div style='
+                background-color: white;
+                border-radius: 8px;
+                padding: 20px;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                border-left: 8px solid {color};
+            '>
+                <div style='display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;'>
+                    <div>
+                        <div style='font-size: 24px; font-weight: bold; margin-bottom: 6px;'>{row['Class_Name']}</div>
+                        <div style='color: #6c757d; font-size: 16px;'>世界線 {row['World_Line']} | 難易度 LV{row['Difficulty']}</div>
                     </div>
-                    """
-            
-            timeline_html += "</div>"
-        
-        timeline_html += "</div>"
-        st.markdown(timeline_html, unsafe_allow_html=True)
+                    <div style='text-align: right;'>
+                        <div style='font-size: 22px; font-weight: bold;'>{row['Time']}</div>
+                    </div>
+                </div>
+                <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; background-color: #f8f9fa; border-radius: 4px;'>
+                    <div>
+                        <div style='font-size: 14px; color: #6c757d; margin-bottom: 6px;'>👨‍🏫 講師</div>
+                        <div style='font-weight: bold; font-size: 16px;'>{row['Teacher']}</div>
+                    </div>
+                    <div>
+                        <div style='font-size: 14px; color: #6c757d; margin-bottom: 6px;'>📚 教材</div>
+                        <div style='font-weight: bold; font-size: 16px;'>{row['Book']}</div>
+                    </div>
+                </div>
+                <div style='margin-top: 16px; padding: 12px; background-color: {color}; border-radius: 4px;'>
+                    <div style='font-size: 14px; color: #000000;'>📝 今日課程內容：Unit 3 - Colors and Shapes</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
 # ============================================
 # 底部資訊
