@@ -28,21 +28,21 @@
 
 ### 表頭（第1行）
 ```
-SyllabusID	SyllabusName	Level_ID	Sequence	Book_Code	Chapters	Book_Full_Name
+SyllabusID	SyllabusName	Level_ID	Sequence	Book_Code	Unit	Book_Full_Name
 ```
 
 ### 範例資料（第2行開始，用 Tab 分隔）
 ```
-SYL001	幼兒英語啟蒙	Level_1	1	P21_B1_1-3	1+2+3	P21 Book 1
-SYL001	幼兒英語啟蒙	Level_1	2	P21_B1_4-6	4+5+6	P21 Book 1
-SYL001	幼兒英語啟蒙	Level_1	3	P21_B2_7-9	7+9	P21 Book 2
-SYL001	幼兒英語啟蒙	Level_1	4	TTR_Story1_1-2	1+2	Toy Team Review Story 1
-SYL001	幼兒英語啟蒙	Level_1	5	P21_B3_Review	Review	P21 Book 3 Review
-SYL002	兒童進階閱讀	Level_2	1	TTT_A1	-	The Thinking Train A1
-SYL002	兒童進階閱讀	Level_2	2	TTT_A2	-	The Thinking Train A2
-SYL002	兒童進階閱讀	Level_2	3	TTT_A3	-	The Thinking Train A3
-SYL002	兒童進階閱讀	Level_2	4	TTT_B1	-	The Thinking Train B1
-SYL002	兒童進階閱讀	Level_2	5	TTT_Review	Review	The Thinking Train Review
+SYL001	幼兒英語啟蒙	Level_1	1		1+2+3	P21 Book 1
+SYL001	幼兒英語啟蒙	Level_1	2		4+5+6	P21 Book 1
+SYL001	幼兒英語啟蒙	Level_1	3		7+9	P21 Book 2
+SYL001	幼兒英語啟蒙	Level_1	4		1+2	Toy Team Review Story 1
+SYL001	幼兒英語啟蒙	Level_1	5		Review	P21 Book 3 Review
+SYL002	兒童進階閱讀	Level_2	1		-	The Thinking Train A1
+SYL002	兒童進階閱讀	Level_2	2		-	The Thinking Train A2
+SYL002	兒童進階閱讀	Level_2	3		-	The Thinking Train A3
+SYL002	兒童進階閱讀	Level_2	4		-	The Thinking Train B1
+SYL002	兒童進階閱讀	Level_2	5		Review	The Thinking Train Review
 ```
 
 ---
@@ -107,7 +107,7 @@ CourseLineID	CourseName	SyllabusID	Weekday	Time	Classroom	Teacher_ID	Start_Date	
 
 ### 表頭（第1行）
 ```
-Slot_ID	CourseLineID	CourseName	SyllabusID	Date	Weekday	Time	Classroom	Teacher_ID	Level_ID	Book_Code	Book_Full_Name	Chapters	Status	Note	Created_At	Updated_At
+Slot_ID	CourseLineID	CourseName	SyllabusID	Date	Weekday	Time	Classroom	Teacher_ID	Level_ID	Book_Code	Book_Full_Name	Unit	Status	Note	Created_At	Updated_At
 ```
 
 ### 資料
@@ -164,17 +164,17 @@ Log_ID	Slot_ID	Teacher_ID	Actual_Book_Code	Attendance	Handover_Note	Completed_At
 
 ### Config_Syllabus（複製下方整段貼到 Google Sheets）
 ```
-SyllabusID	SyllabusName	Level_ID	Sequence	Book_Code	Chapters	Book_Full_Name
-SYL001	幼兒英語啟蒙	Level_1	1	P21_B1_1-3	1+2+3	P21 Book 1
-SYL001	幼兒英語啟蒙	Level_1	2	P21_B1_4-6	4+5+6	P21 Book 1
-SYL001	幼兒英語啟蒙	Level_1	3	P21_B2_7-9	7+9	P21 Book 2
-SYL001	幼兒英語啟蒙	Level_1	4	TTR_Story1_1-2	1+2	Toy Team Review Story 1
-SYL001	幼兒英語啟蒙	Level_1	5	P21_B3_Review	Review	P21 Book 3 Review
-SYL002	兒童進階閱讀	Level_2	1	TTT_A1	-	The Thinking Train A1
-SYL002	兒童進階閱讀	Level_2	2	TTT_A2	-	The Thinking Train A2
-SYL002	兒童進階閱讀	Level_2	3	TTT_A3	-	The Thinking Train A3
-SYL002	兒童進階閱讀	Level_2	4	TTT_B1	-	The Thinking Train B1
-SYL002	兒童進階閱讀	Level_2	5	TTT_Review	Review	The Thinking Train Review
+SyllabusID	SyllabusName	Level_ID	Sequence	Book_Code	Unit	Book_Full_Name
+SYL001	幼兒英語啟蒙	Level_1	1		1+2+3	P21 Book 1
+SYL001	幼兒英語啟蒙	Level_1	2		4+5+6	P21 Book 1
+SYL001	幼兒英語啟蒙	Level_1	3		7+9	P21 Book 2
+SYL001	幼兒英語啟蒙	Level_1	4		1+2	Toy Team Review Story 1
+SYL001	幼兒英語啟蒙	Level_1	5		Review	P21 Book 3 Review
+SYL002	兒童進階閱讀	Level_2	1		-	The Thinking Train A1
+SYL002	兒童進階閱讀	Level_2	2		-	The Thinking Train A2
+SYL002	兒童進階閱讀	Level_2	3		-	The Thinking Train A3
+SYL002	兒童進階閱讀	Level_2	4		-	The Thinking Train B1
+SYL002	兒童進階閱讀	Level_2	5		Review	The Thinking Train Review
 ```
 
 ### Config_CourseLine（只複製表頭）
@@ -185,7 +185,7 @@ CourseLineID	CourseName	SyllabusID	Weekday	Time	Classroom	Teacher_ID	Start_Date	
 
 ### Master_Schedule（只複製表頭）
 ```
-Slot_ID	CourseLineID	CourseName	SyllabusID	Date	Weekday	Time	Classroom	Teacher_ID	Level_ID	Book_Code	Book_Full_Name	Chapters	Status	Note	Created_At	Updated_At
+Slot_ID	CourseLineID	CourseName	SyllabusID	Date	Weekday	Time	Classroom	Teacher_ID	Level_ID	Book_Code	Book_Full_Name	Unit	Status	Note	Created_At	Updated_At
 ```
 
 ---

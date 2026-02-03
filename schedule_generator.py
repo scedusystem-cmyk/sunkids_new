@@ -75,7 +75,7 @@ def generate_schedule(courseline_config, syllabus_config, weeks=12):
             'Level_ID': level_id,
             'Book_Code': book_info['Book_Code'],
             'Book_Full_Name': book_info['Book_Full_Name'],
-            'Chapters': book_info['Chapters'],
+            'Unit': book_info['Unit'],
             'Status': '正常',
             'Note': '',
             'Created_At': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),

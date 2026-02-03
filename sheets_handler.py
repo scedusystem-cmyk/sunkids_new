@@ -121,6 +121,7 @@ def write_master_schedule(df):
     寫入 Master_Schedule 工作表
     完全覆寫（含表頭）
     用於「同步所有課綱路線」按鈕
+    優化：使用批次寫入減少 API 請求次數
     """
     try:
         spreadsheet = get_spreadsheet()
@@ -132,13 +133,13 @@ def write_master_schedule(df):
         # 清空工作表
         worksheet.clear()
         
-        # 寫入表頭
+        # 準備資料（表頭 + 資料）
         headers = df.columns.tolist()
-        worksheet.append_row(headers)
+        data_rows = df.values.tolist()
+        all_data = [headers] + data_rows
         
-        # 寫入資料
-        for _, row in df.iterrows():
-            worksheet.append_row(row.tolist())
+        # 批次寫入（1 次 API 請求）
+        worksheet.append_rows(all_data)
         
         st.success("✅ Master_Schedule 更新成功")
         return True
@@ -152,6 +153,7 @@ def append_master_schedule(df):
     追加課程至 Master_Schedule 工作表
     不清空現有資料，只新增新課程
     用於「新增課綱路線」
+    優化：使用批次寫入減少 API 請求次數
     """
     try:
         spreadsheet = get_spreadsheet()
@@ -166,9 +168,11 @@ def append_master_schedule(df):
         # 確保 DataFrame 欄位順序與 Google Sheets 表頭一致
         df_ordered = df[headers] if all(col in df.columns for col in headers) else df
         
-        # 追加資料（不清空）
-        for _, row in df_ordered.iterrows():
-            worksheet.append_row(row.tolist())
+        # 準備資料
+        data_rows = df_ordered.values.tolist()
+        
+        # 批次追加（1 次 API 請求）
+        worksheet.append_rows(data_rows)
         
         st.success(f"✅ 成功新增 {len(df)} 筆課程")
         return True

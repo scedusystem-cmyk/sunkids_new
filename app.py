@@ -475,7 +475,7 @@ else:
                     </div>
                 </div>
                 <div style='margin-top: 16px; padding: 12px; background-color: {color}; border-radius: 4px;'>
-                    <div style='font-size: 14px; color: #000000;'>📝 章節：{row.get('Chapters', '-')}</div>
+                    <div style='font-size: 14px; color: #000000;'>📝 單元：{row.get('Unit', '-')}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)

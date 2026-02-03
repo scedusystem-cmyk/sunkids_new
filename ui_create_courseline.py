@@ -40,6 +40,35 @@ def generate_courseline_id(existing_courselines):
     next_num = max(numbers) + 1
     return f"C{next_num:03d}"
 
+def auto_assign_classroom(df_courseline, weekday, time):
+    """
+    根據同時段課程數量自動分配教室
+    
+    Parameters:
+    - df_courseline: Config_CourseLine DataFrame
+    - weekday: 星期（1-7）
+    - time: 時間（HH:MM）
+    
+    Returns:
+    - str: 教室名稱（A教室、B教室...）
+    """
+    if df_courseline is None or len(df_courseline) == 0:
+        return "A教室"
+    
+    # 檢查同時段已有幾堂課
+    same_time_courses = df_courseline[
+        (df_courseline['Weekday'] == weekday) & 
+        (df_courseline['Time'] == time)
+    ]
+    
+    # 計算已使用的教室數量
+    count = len(same_time_courses)
+    
+    # 分配下一個教室（A, B, C, D...）
+    classroom_letter = chr(65 + count)  # 65 = 'A'
+    
+    return f"{classroom_letter}教室"
+
 def show_create_courseline_dialog():
     """
     顯示新增課綱路線對話框
@@ -93,7 +122,7 @@ def show_create_courseline_dialog():
         with st.expander("📚 查看課綱內容"):
             syllabus_detail = df_syllabus[df_syllabus['SyllabusID'] == syllabus_id]
             st.dataframe(
-                syllabus_detail[['Sequence', 'Book_Full_Name', 'Chapters']],
+                syllabus_detail[['Sequence', 'Book_Full_Name', 'Unit']],
                 use_container_width=True,
                 hide_index=True
             )
@@ -117,12 +146,12 @@ def show_create_courseline_dialog():
                 help="開始時間（24小時制）"
             ).strftime("%H:%M")
         
-        # 教室
-        classroom = st.text_input(
-            "教室 *",
-            placeholder="例如：A教室",
-            value="A教室"
-        )
+        # 自動分配教室（根據選擇的星期和時間）
+        assigned_classroom = auto_assign_classroom(df_courseline, weekday, time)
+        
+        # 顯示自動分配的教室（不可編輯）
+        st.info(f"📍 教室：**{assigned_classroom}** （系統根據同時段課程數量自動分配）")
+        classroom = assigned_classroom
         
         # 選擇老師
         selected_teacher_key = st.selectbox(
