@@ -66,7 +66,7 @@ def load_schedule_data():
             st.warning("⚠️ Master_Schedule 無資料，請先新增課綱路線")
             return pd.DataFrame(), []
         
-        st.info(f"📊 Master_Schedule 共 {len(df_schedule) 筆資料")
+        st.info(f"📊 Master_Schedule 共 {len(df_schedule)} 筆資料")
         
         # 確保日期格式
         df_schedule['Date'] = pd.to_datetime(df_schedule['Date'], errors='coerce')
