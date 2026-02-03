@@ -32,6 +32,9 @@ DIFFICULTY_COLORS = {
     5: "#B3D9FF",  # 淺藍（困難）
 }
 
+# 統一使用黑色文字
+TEXT_COLOR = "#000000"
+
 # ============================================
 # 模擬資料
 # ============================================
@@ -39,37 +42,72 @@ DIFFICULTY_COLORS = {
 def load_mock_data():
     """載入模擬資料"""
     
-    # 班級資料（包含世界線和難易度）
+    # 班級資料（集中在晚上 19:00-22:00，同時段會有多個課程）
     classes = [
+        # 週一 19:00 - 3 個課程
         {'Class_ID': 'C001', 'Class_Name': '快樂A班', 'World_Line': 1, 'Difficulty': 3, 'Weekday': 0, 'Time': '19:00', 'Teacher': '王小明'},
-        {'Class_ID': 'C002', 'Class_Name': '快樂A班', 'World_Line': 2, 'Difficulty': 3, 'Weekday': 2, 'Time': '14:00', 'Teacher': '李美華'},
-        {'Class_ID': 'C003', 'Class_Name': '活力B班', 'World_Line': 1, 'Difficulty': 5, 'Weekday': 1, 'Time': '19:00', 'Teacher': '李美華'},
-        {'Class_ID': 'C004', 'Class_Name': '精英C班', 'World_Line': 1, 'Difficulty': 1, 'Weekday': 4, 'Time': '20:00', 'Teacher': '王小明'},
-        {'Class_ID': 'C005', 'Class_Name': '進階D班', 'World_Line': 1, 'Difficulty': 4, 'Weekday': 3, 'Time': '18:00', 'Teacher': '張大偉'},
+        {'Class_ID': 'C002', 'Class_Name': '快樂A班', 'World_Line': 2, 'Difficulty': 5, 'Weekday': 0, 'Time': '19:00', 'Teacher': '李美華'},
+        {'Class_ID': 'C003', 'Class_Name': '活力B班', 'World_Line': 1, 'Difficulty': 1, 'Weekday': 0, 'Time': '19:00', 'Teacher': '張大偉'},
+        
+        # 週一 20:00 - 3 個課程
+        {'Class_ID': 'C004', 'Class_Name': '精英C班', 'World_Line': 1, 'Difficulty': 2, 'Weekday': 0, 'Time': '20:00', 'Teacher': '王小明'},
+        {'Class_ID': 'C005', 'Class_Name': '進階D班', 'World_Line': 1, 'Difficulty': 4, 'Weekday': 0, 'Time': '20:00', 'Teacher': '李美華'},
+        {'Class_ID': 'C006', 'Class_Name': '進階D班', 'World_Line': 2, 'Difficulty': 4, 'Weekday': 0, 'Time': '20:00', 'Teacher': '張大偉'},
+        
+        # 週一 21:00 - 2 個課程
+        {'Class_ID': 'C007', 'Class_Name': '基礎E班', 'World_Line': 1, 'Difficulty': 1, 'Weekday': 0, 'Time': '21:00', 'Teacher': '王小明'},
+        {'Class_ID': 'C008', 'Class_Name': '衝刺F班', 'World_Line': 1, 'Difficulty': 5, 'Weekday': 0, 'Time': '21:00', 'Teacher': '李美華'},
+        
+        # 週二 19:00 - 3 個課程
+        {'Class_ID': 'C009', 'Class_Name': '快樂A班', 'World_Line': 3, 'Difficulty': 3, 'Weekday': 1, 'Time': '19:00', 'Teacher': '王小明'},
+        {'Class_ID': 'C010', 'Class_Name': '活力B班', 'World_Line': 2, 'Difficulty': 1, 'Weekday': 1, 'Time': '19:00', 'Teacher': '李美華'},
+        {'Class_ID': 'C011', 'Class_Name': '精英C班', 'World_Line': 2, 'Difficulty': 2, 'Weekday': 1, 'Time': '19:00', 'Teacher': '張大偉'},
+        
+        # 週二 20:00 - 3 個課程
+        {'Class_ID': 'C012', 'Class_Name': '進階D班', 'World_Line': 3, 'Difficulty': 4, 'Weekday': 1, 'Time': '20:00', 'Teacher': '王小明'},
+        {'Class_ID': 'C013', 'Class_Name': '基礎E班', 'World_Line': 2, 'Difficulty': 1, 'Weekday': 1, 'Time': '20:00', 'Teacher': '李美華'},
+        {'Class_ID': 'C014', 'Class_Name': '衝刺F班', 'World_Line': 2, 'Difficulty': 5, 'Weekday': 1, 'Time': '20:00', 'Teacher': '張大偉'},
+        
+        # 週三到週五類似配置（省略，會自動產生）
+        {'Class_ID': 'C015', 'Class_Name': '快樂A班', 'World_Line': 1, 'Difficulty': 3, 'Weekday': 2, 'Time': '19:00', 'Teacher': '王小明'},
+        {'Class_ID': 'C016', 'Class_Name': '活力B班', 'World_Line': 1, 'Difficulty': 1, 'Weekday': 2, 'Time': '19:00', 'Teacher': '李美華'},
+        {'Class_ID': 'C017', 'Class_Name': '精英C班', 'World_Line': 1, 'Difficulty': 2, 'Weekday': 3, 'Time': '20:00', 'Teacher': '張大偉'},
+        {'Class_ID': 'C018', 'Class_Name': '進階D班', 'World_Line': 1, 'Difficulty': 4, 'Weekday': 4, 'Time': '21:00', 'Teacher': '王小明'},
     ]
     
     # 教材資料
     books = {
         'C001': ['P21 Book 1', 'P21 Book 2', 'Review 1'],
         'C002': ['P21 Book 1', 'P21 Book 2', 'Review 1'],
-        'C003': ['TTT A1', 'TTT A2', 'TTT A3', 'TTT B1'],
+        'C003': ['TTT A1', 'TTT A2', 'TTT A3'],
         'C004': ['Disney 1', 'Disney 2', 'Story 1'],
         'C005': ['TTT C1', 'TTT C2', 'TTT D1'],
+        'C006': ['TTT C1', 'TTT C2', 'TTT D1'],
+        'C007': ['Basic 1', 'Basic 2'],
+        'C008': ['Advanced 1', 'Advanced 2'],
+        'C009': ['P21 Book 1', 'P21 Book 2'],
+        'C010': ['TTT A1', 'TTT A2'],
+        'C011': ['Disney 1', 'Disney 2'],
+        'C012': ['TTT C1', 'TTT C2'],
+        'C013': ['Basic 1', 'Basic 2'],
+        'C014': ['Advanced 1', 'Advanced 2'],
+        'C015': ['P21 Book 1', 'P21 Book 2'],
+        'C016': ['TTT A1', 'TTT A2'],
+        'C017': ['Disney 1', 'Disney 2'],
+        'C018': ['TTT C1', 'TTT C2'],
     }
     
-    # 產生未來 8 週的課程
-    start_date = datetime(2026, 2, 3)  # 從 2026/2/3 開始
+    # 產生未來 4 週的課程
+    start_date = datetime(2026, 2, 3)
     all_schedules = []
     
     for cls in classes:
-        # 找到第一個符合 weekday 的日期
         days_ahead = cls['Weekday'] - start_date.weekday()
         if days_ahead < 0:
             days_ahead += 7
         first_date = start_date + timedelta(days=days_ahead)
         
-        # 產生 8 週的課程
-        for week in range(8):
+        for week in range(4):
             date = first_date + timedelta(weeks=week)
             book_index = week % len(books[cls['Class_ID']])
             
@@ -118,11 +156,20 @@ view_mode = st.sidebar.radio(
 
 # 日期選擇
 st.sidebar.subheader("🗓️ 日期選擇")
+
+# 初始化 session state
+if 'current_date' not in st.session_state:
+    st.session_state.current_date = datetime(2026, 2, 3)
+
 selected_date = st.sidebar.date_input(
     "選擇日期",
-    value=datetime(2026, 2, 3),
-    key="selected_date"
+    value=st.session_state.current_date,
+    key="date_picker"
 )
+
+# 同步日期選擇器的變更
+if selected_date != st.session_state.current_date.date():
+    st.session_state.current_date = datetime.combine(selected_date, datetime.min.time())
 
 # 載入資料
 df_schedule, classes = load_mock_data()
@@ -184,45 +231,59 @@ col_title1, col_title2, col_title3 = st.columns([1, 2, 1])
 with col_title1:
     if st.button("◀", key="prev_date"):
         if view_mode == "月":
-            new_date = selected_date.replace(day=1) - timedelta(days=1)
-            st.session_state.selected_date = new_date
-            st.rerun()
+            # 上個月
+            if st.session_state.current_date.month == 1:
+                st.session_state.current_date = st.session_state.current_date.replace(
+                    year=st.session_state.current_date.year - 1, 
+                    month=12, 
+                    day=1
+                )
+            else:
+                st.session_state.current_date = st.session_state.current_date.replace(
+                    month=st.session_state.current_date.month - 1, 
+                    day=1
+                )
         elif view_mode == "週":
-            new_date = selected_date - timedelta(days=7)
-            st.session_state.selected_date = new_date
-            st.rerun()
+            # 上週
+            st.session_state.current_date = st.session_state.current_date - timedelta(days=7)
         else:
-            new_date = selected_date - timedelta(days=1)
-            st.session_state.selected_date = new_date
-            st.rerun()
+            # 昨天
+            st.session_state.current_date = st.session_state.current_date - timedelta(days=1)
+        st.rerun()
 
 with col_title2:
+    current_date = st.session_state.current_date
     if view_mode == "月":
-        st.title(f"📅 {selected_date.year}年{selected_date.month}月")
+        st.title(f"📅 {current_date.year}年{current_date.month}月")
     elif view_mode == "週":
-        week_start = selected_date - timedelta(days=selected_date.weekday())
+        week_start = current_date - timedelta(days=current_date.weekday())
         week_end = week_start + timedelta(days=6)
         st.title(f"📅 {week_start.strftime('%Y/%m/%d')} - {week_end.strftime('%m/%d')}")
     else:
-        st.title(f"📅 {selected_date.strftime('%Y年%m月%d日')} ({['週一','週二','週三','週四','週五','週六','週日'][selected_date.weekday()]})")
+        st.title(f"📅 {current_date.strftime('%Y年%m月%d日')} ({['週一','週二','週三','週四','週五','週六','週日'][current_date.weekday()]})")
 
 with col_title3:
     if st.button("▶", key="next_date"):
         if view_mode == "月":
-            if selected_date.month == 12:
-                new_date = selected_date.replace(year=selected_date.year + 1, month=1)
+            # 下個月
+            if st.session_state.current_date.month == 12:
+                st.session_state.current_date = st.session_state.current_date.replace(
+                    year=st.session_state.current_date.year + 1, 
+                    month=1, 
+                    day=1
+                )
             else:
-                new_date = selected_date.replace(month=selected_date.month + 1)
-            st.session_state.selected_date = new_date
-            st.rerun()
+                st.session_state.current_date = st.session_state.current_date.replace(
+                    month=st.session_state.current_date.month + 1, 
+                    day=1
+                )
         elif view_mode == "週":
-            new_date = selected_date + timedelta(days=7)
-            st.session_state.selected_date = new_date
-            st.rerun()
+            # 下週
+            st.session_state.current_date = st.session_state.current_date + timedelta(days=7)
         else:
-            new_date = selected_date + timedelta(days=1)
-            st.session_state.selected_date = new_date
-            st.rerun()
+            # 明天
+            st.session_state.current_date = st.session_state.current_date + timedelta(days=1)
+        st.rerun()
 
 st.markdown("---")
 
@@ -232,7 +293,8 @@ st.markdown("---")
 if view_mode == "月":
     st.caption("💡 月模式：顯示主課程名稱 + 難易度顏色")
     
-    cal = get_month_calendar(selected_date.year, selected_date.month)
+    current_date = st.session_state.current_date
+    cal = get_month_calendar(current_date.year, current_date.month)
     
     header_cols = st.columns(7)
     weekdays = ['週一', '週二', '週三', '週四', '週五', '週六', '週日']
@@ -246,7 +308,7 @@ if view_mode == "月":
                 if day == 0:
                     st.markdown("<div style='height: 120px; background-color: #f8f9fa; border: 1px solid #dee2e6;'></div>", unsafe_allow_html=True)
                 else:
-                    date_str = f"{selected_date.year}-{selected_date.month:02d}-{day:02d}"
+                    date_str = f"{current_date.year}-{current_date.month:02d}-{day:02d}"
                     day_classes = filtered_df[filtered_df['Date'] == date_str]
                     
                     content = f"<div style='min-height: 120px; border: 1px solid #dee2e6; padding: 8px;'>"
@@ -258,10 +320,12 @@ if view_mode == "月":
                             content += f"""
                             <div style='
                                 background-color: {color};
-                                padding: 4px;
-                                margin-bottom: 4px;
+                                color: {TEXT_COLOR};
+                                padding: 6px;
+                                margin-bottom: 6px;
                                 border-radius: 4px;
-                                font-size: 11px;
+                                font-size: 15px;
+                                font-weight: 600;
                                 cursor: pointer;
                             '>
                                 {row['Class_Name']}
@@ -277,50 +341,76 @@ if view_mode == "月":
 elif view_mode == "週":
     st.caption("💡 週模式：顯示課程名稱 + 難易度顏色 + 世界線 + 老師名稱")
     
-    week_start = selected_date - timedelta(days=selected_date.weekday())
+    current_date = st.session_state.current_date
+    week_start = current_date - timedelta(days=current_date.weekday())
     week_dates = [week_start + timedelta(days=i) for i in range(7)]
     
-    time_slots = [f"{h:02d}:00" for h in range(8, 22)]
+    # 時間軸設定（19:00 - 22:00）
+    time_slots = [f"{h:02d}:00" for h in range(19, 23)]
+    
+    # 找出有課程的時段（整週都沒課的時段會被隱藏）
+    active_time_slots = []
+    for time_slot in time_slots:
+        has_class = False
+        for date in week_dates:
+            date_str = date.strftime('%Y-%m-%d')
+            slot_classes = filtered_df[
+                (filtered_df['Date'] == date_str) & 
+                (filtered_df['Time'].str.startswith(time_slot.split(':')[0]))
+            ]
+            if len(slot_classes) > 0:
+                has_class = True
+                break
+        if has_class:
+            active_time_slots.append(time_slot)
     
     st.markdown("""
     <style>
     .week-grid {
         display: grid;
-        grid-template-columns: 80px repeat(7, 1fr);
+        grid-template-columns: 100px repeat(7, 1fr);
         gap: 1px;
         background-color: #dee2e6;
         border: 1px solid #dee2e6;
     }
     .time-label {
         background-color: #f8f9fa;
-        padding: 8px;
+        padding: 12px;
         text-align: center;
-        font-size: 12px;
-        color: #6c757d;
+        font-size: 18px;
+        font-weight: 600;
+        color: #000000;
     }
     .day-header {
         background-color: #ffffff;
-        padding: 12px;
+        padding: 16px;
         text-align: center;
         font-weight: bold;
+        font-size: 16px;
         border-bottom: 2px solid #dee2e6;
     }
     .time-slot {
         background-color: #ffffff;
-        min-height: 60px;
-        padding: 4px;
+        min-height: 80px;
+        padding: 6px;
         position: relative;
     }
     .class-card {
-        padding: 8px;
+        padding: 10px;
         border-radius: 4px;
-        margin-bottom: 4px;
-        font-size: 12px;
+        margin-bottom: 6px;
+        font-size: 15px;
         cursor: pointer;
-        border-left: 4px solid rgba(0,0,0,0.2);
+        border-left: 4px solid rgba(0,0,0,0.3);
+        font-weight: 600;
     }
     .class-card:hover {
         opacity: 0.8;
+    }
+    .class-info {
+        font-size: 13px;
+        font-weight: 500;
+        margin-top: 4px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -331,7 +421,8 @@ elif view_mode == "週":
         weekday = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'][date.weekday()]
         header_html += f"<div class='day-header'>{date.month}/{date.day}<br>{weekday}</div>"
     
-    for time_slot in time_slots:
+    # 只顯示有課程的時段
+    for time_slot in active_time_slots:
         header_html += f"<div class='time-label'>{time_slot}</div>"
         
         for date in week_dates:
@@ -348,10 +439,10 @@ elif view_mode == "週":
                 for _, row in slot_classes.iterrows():
                     color = DIFFICULTY_COLORS[row['Difficulty']]
                     header_html += f"""
-                    <div class='class-card' style='background-color: {color};'>
-                        <div style='font-weight: bold;'>{row['Class_Name']}</div>
-                        <div style='font-size: 10px; color: #495057;'>世界線{row['World_Line']} | {row['Teacher']}</div>
-                        <div style='font-size: 10px; color: #6c757d;'>{row['Book']}</div>
+                    <div class='class-card' style='background-color: {color}; color: {TEXT_COLOR};'>
+                        <div>{row['Class_Name']}</div>
+                        <div class='class-info'>世界線{row['World_Line']} | {row['Teacher']}</div>
+                        <div class='class-info'>{row['Book']}</div>
                     </div>
                     """
             
@@ -366,7 +457,8 @@ elif view_mode == "週":
 else:
     st.caption("💡 日模式：顯示完整課程資訊 + 每日課程內容")
     
-    date_str = selected_date.strftime('%Y-%m-%d')
+    current_date = st.session_state.current_date
+    date_str = current_date.strftime('%Y-%m-%d')
     day_classes = filtered_df[filtered_df['Date'] == date_str].sort_values('Time')
     
     if len(day_classes) == 0:
