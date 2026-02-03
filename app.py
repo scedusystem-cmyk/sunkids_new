@@ -151,11 +151,6 @@ selected_date = st.sidebar.date_input(
 # 載入資料
 df_schedule, classes = load_schedule_data()
 
-# 檢查是否有資料
-if df_schedule.empty:
-    st.error("❌ 無法載入排課資料，請檢查 Google Sheets 連線")
-    st.stop()
-
 # 篩選條件
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔍 篩選條件")
@@ -253,6 +248,11 @@ if selected_difficulty != '全部':
 # ============================================
 # 主畫面
 # ============================================
+
+# 如果沒有資料，顯示提示訊息
+if df_schedule.empty:
+    st.info("📭 目前沒有課程資料，請點擊左側「➕ 新增課綱路線」開始排課")
+    st.stop()
 
 # 標題列
 col_title1, col_title2, col_title3 = st.columns([1, 2, 1])
