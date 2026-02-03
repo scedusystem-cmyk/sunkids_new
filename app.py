@@ -46,12 +46,27 @@ def load_schedule_data():
     從 Google Sheets 載入排課資料
     """
     try:
+        # 測試連線
+        spreadsheet = get_spreadsheet()
+        if spreadsheet is None:
+            st.error("❌ 無法連接到 Google Sheets - Spreadsheet 為 None")
+            st.info("請檢查：1. Secrets 是否正確設定 2. Service Account 是否加入共用")
+            return pd.DataFrame(), []
+        
+        st.success(f"✅ 成功連接到: {spreadsheet.title}")
+        
         # 載入 Master_Schedule
         df_schedule = load_master_schedule()
         
-        if df_schedule is None or len(df_schedule) == 0:
+        if df_schedule is None:
+            st.error("❌ load_master_schedule() 返回 None")
+            return pd.DataFrame(), []
+        
+        if len(df_schedule) == 0:
             st.warning("⚠️ Master_Schedule 無資料，請先在設定頁面同步班級資料")
             return pd.DataFrame(), []
+        
+        st.info(f"📊 Master_Schedule 共 {len(df_schedule)} 筆資料")
         
         # 確保日期格式
         df_schedule['Date'] = pd.to_datetime(df_schedule['Date'], errors='coerce')
@@ -63,7 +78,7 @@ def load_schedule_data():
         if df_class is not None and len(df_class) > 0:
             # 合併班級資訊（取得難易度）
             # 假設 Level_ID 的數字部分就是難易度
-            df_class['Difficulty'] = df_class['Level_ID'].str.extract('(\d+)').astype(int)
+            df_class['Difficulty'] = df_class['Level_ID'].str.extract(r'(\d+)').astype(int)
             df_schedule = df_schedule.merge(
                 df_class[['Class_ID', 'Difficulty']], 
                 on='Class_ID', 
@@ -87,6 +102,9 @@ def load_schedule_data():
     
     except Exception as e:
         st.error(f"❌ 載入資料失敗: {str(e)}")
+        st.error(f"錯誤類型: {type(e).__name__}")
+        import traceback
+        st.code(traceback.format_exc())
         return pd.DataFrame(), []
 
 # ============================================
