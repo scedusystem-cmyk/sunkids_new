@@ -1,14 +1,15 @@
 """
 Sun Kids 智慧排課管理系統 (SK-SSS)
-Streamlit Web Application - Phase 1 MVP
+Streamlit Web Application - Phase 1 完整版
 
-使用模擬資料展示基本功能
+三種檢視模式：月/週/日
+難易度顏色系統：LV1-LV5
 """
 
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
-import uuid
+import calendar
 
 # ============================================
 # 頁面設定
@@ -21,123 +22,126 @@ st.set_page_config(
 )
 
 # ============================================
-# 模擬資料載入
+# 難易度顏色定義
 # ============================================
+DIFFICULTY_COLORS = {
+    1: "#FFB3BA",  # 嫩紅（簡單）
+    2: "#FFCC99",  # 淡橘
+    3: "#FFFFB3",  # 淺黃
+    4: "#B3FFB3",  # 淺綠
+    5: "#B3D9FF",  # 淺藍（困難）
+}
 
+# ============================================
+# 模擬資料
+# ============================================
 @st.cache_data
 def load_mock_data():
     """載入模擬資料"""
     
-    # 教材循環資料
-    syllabus_data = {
-        'Level_1': [
-            {'Sequence': 1, 'Book_Code': 'P21_B1_1-3', 'Chapters': '1+2+3', 'Book_Full_Name': 'P21 Book 1'},
-            {'Sequence': 2, 'Book_Code': 'P21_B1_4-6', 'Chapters': '4+5+6', 'Book_Full_Name': 'P21 Book 1'},
-            {'Sequence': 3, 'Book_Code': 'P21_B2_7-9', 'Chapters': '7+9', 'Book_Full_Name': 'P21 Book 2'},
-            {'Sequence': 4, 'Book_Code': 'TTR_Story1_1-2', 'Chapters': '1+2', 'Book_Full_Name': 'Toy Team Review Story 1'},
-            {'Sequence': 5, 'Book_Code': 'TTR_Story1_2-3', 'Chapters': '2+3', 'Book_Full_Name': 'Toy Team Review Story 1'},
-            {'Sequence': 6, 'Book_Code': 'P21_B3_Review', 'Chapters': 'Review', 'Book_Full_Name': 'P21 Book 3 Review'},
-        ],
-        'Level_2': [
-            {'Sequence': 1, 'Book_Code': 'TTT_A1', 'Chapters': '-', 'Book_Full_Name': 'The Thinking Train A1'},
-            {'Sequence': 2, 'Book_Code': 'TTT_A2', 'Chapters': '-', 'Book_Full_Name': 'The Thinking Train A2'},
-            {'Sequence': 3, 'Book_Code': 'TTT_A3', 'Chapters': '-', 'Book_Full_Name': 'The Thinking Train A3'},
-            {'Sequence': 4, 'Book_Code': 'TTT_B1', 'Chapters': '-', 'Book_Full_Name': 'The Thinking Train B1'},
-        ]
-    }
-    
-    # 班級資料
+    # 班級資料（包含世界線和難易度）
     classes = [
-        {'Class_ID': 'C001', 'Class_Name': '快樂A班', 'Level_ID': 'Level_1', 'Weekday': 0, 'Time': '19:00', 'Classroom': 'A教室', 'Teacher_ID': 'T001', 'Teacher_Name': '王小明'},
-        {'Class_ID': 'C002', 'Class_Name': '活力B班', 'Level_ID': 'Level_2', 'Weekday': 1, 'Time': '19:00', 'Classroom': 'B教室', 'Teacher_ID': 'T002', 'Teacher_Name': '李美華'},
-        {'Class_ID': 'C003', 'Class_Name': '精英C班', 'Level_ID': 'Level_1', 'Weekday': 4, 'Time': '20:00', 'Classroom': 'A教室', 'Teacher_ID': 'T001', 'Teacher_Name': '王小明'},
+        {'Class_ID': 'C001', 'Class_Name': '快樂A班', 'World_Line': 1, 'Difficulty': 3, 'Weekday': 0, 'Time': '19:00', 'Teacher': '王小明'},
+        {'Class_ID': 'C002', 'Class_Name': '快樂A班', 'World_Line': 2, 'Difficulty': 3, 'Weekday': 2, 'Time': '14:00', 'Teacher': '李美華'},
+        {'Class_ID': 'C003', 'Class_Name': '活力B班', 'World_Line': 1, 'Difficulty': 5, 'Weekday': 1, 'Time': '19:00', 'Teacher': '李美華'},
+        {'Class_ID': 'C004', 'Class_Name': '精英C班', 'World_Line': 1, 'Difficulty': 1, 'Weekday': 4, 'Time': '20:00', 'Teacher': '王小明'},
+        {'Class_ID': 'C005', 'Class_Name': '進階D班', 'World_Line': 1, 'Difficulty': 4, 'Weekday': 3, 'Time': '18:00', 'Teacher': '張大偉'},
     ]
     
-    # 產生排課表（未來4週）
-    start_date = datetime.now()
-    holidays = []
+    # 教材資料
+    books = {
+        'C001': ['P21 Book 1', 'P21 Book 2', 'Review 1'],
+        'C002': ['P21 Book 1', 'P21 Book 2', 'Review 1'],
+        'C003': ['TTT A1', 'TTT A2', 'TTT A3', 'TTT B1'],
+        'C004': ['Disney 1', 'Disney 2', 'Story 1'],
+        'C005': ['TTT C1', 'TTT C2', 'TTT D1'],
+    }
     
+    # 產生未來 8 週的課程
+    start_date = datetime(2026, 2, 3)  # 從 2026/2/3 開始
     all_schedules = []
+    
     for cls in classes:
-        syllabus = syllabus_data[cls['Level_ID']]
-        dates = generate_dates(start_date, cls['Weekday'], weeks=4, holidays=holidays)
+        # 找到第一個符合 weekday 的日期
+        days_ahead = cls['Weekday'] - start_date.weekday()
+        if days_ahead < 0:
+            days_ahead += 7
+        first_date = start_date + timedelta(days=days_ahead)
         
-        for idx, date in enumerate(dates):
-            current_book = syllabus[idx % len(syllabus)]
+        # 產生 8 週的課程
+        for week in range(8):
+            date = first_date + timedelta(weeks=week)
+            book_index = week % len(books[cls['Class_ID']])
             
             all_schedules.append({
-                'Slot_ID': str(uuid.uuid4()),
                 'Date': date.strftime('%Y-%m-%d'),
                 'Weekday': ['週一', '週二', '週三', '週四', '週五', '週六', '週日'][date.weekday()],
                 'Time': cls['Time'],
-                'Classroom': cls['Classroom'],
                 'Class_ID': cls['Class_ID'],
                 'Class_Name': cls['Class_Name'],
-                'Teacher_ID': cls['Teacher_ID'],
-                'Teacher_Name': cls['Teacher_Name'],
-                'Level_ID': cls['Level_ID'],
-                'Book_Code': current_book['Book_Code'],
-                'Book_Name': current_book['Book_Full_Name'],
-                'Chapters': current_book['Chapters'],
-                'Status': '正常' if date >= datetime.now() else '已完成',
-                'Note': ''
+                'World_Line': cls['World_Line'],
+                'Teacher': cls['Teacher'],
+                'Difficulty': cls['Difficulty'],
+                'Book': books[cls['Class_ID']][book_index],
+                'Status': '正常',
             })
     
-    return pd.DataFrame(all_schedules), classes, syllabus_data
-
-def generate_dates(start_date, weekday, weeks=4, holidays=None):
-    """產生日期列表"""
-    if holidays is None:
-        holidays = []
-    
-    dates = []
-    current_date = start_date
-    
-    days_ahead = weekday - current_date.weekday()
-    if days_ahead < 0:
-        days_ahead += 7
-    current_date += timedelta(days=days_ahead)
-    
-    for _ in range(weeks):
-        dates.append(current_date)
-        current_date += timedelta(weeks=1)
-    
-    return dates
+    return pd.DataFrame(all_schedules), classes
 
 # ============================================
-# 側邊欄 - 篩選器
+# 輔助函數
 # ============================================
+def get_month_calendar(year, month):
+    """取得指定月份的日曆矩陣（6週x7天）"""
+    cal = calendar.monthcalendar(year, month)
+    # 補齊到 6 週
+    while len(cal) < 6:
+        cal.append([0] * 7)
+    return cal
 
+# ============================================
+# 側邊欄
+# ============================================
 st.sidebar.title("📚 Sun Kids 排課系統")
 st.sidebar.markdown("---")
 
-# 登入資訊（模擬）
+# 登入資訊
 st.sidebar.info("👤 登入身分：教務長")
 st.sidebar.markdown("---")
 
-# 篩選選項
-st.sidebar.subheader("🔍 篩選條件")
-
-df_schedule, classes, syllabus_data = load_mock_data()
-
-# 日期範圍篩選
-date_range = st.sidebar.date_input(
-    "日期範圍",
-    value=(datetime.now(), datetime.now() + timedelta(weeks=4)),
-    key="date_range"
+# 檢視模式切換
+view_mode = st.sidebar.radio(
+    "📅 檢視模式",
+    ["月", "週", "日"],
+    horizontal=True
 )
 
+# 日期選擇
+st.sidebar.subheader("🗓️ 日期選擇")
+selected_date = st.sidebar.date_input(
+    "選擇日期",
+    value=datetime(2026, 2, 3),
+    key="selected_date"
+)
+
+# 載入資料
+df_schedule, classes = load_mock_data()
+
+# 篩選條件
+st.sidebar.markdown("---")
+st.sidebar.subheader("🔍 篩選條件")
+
 # 班級篩選
-class_options = ['全部'] + [c['Class_Name'] for c in classes]
+class_options = ['全部'] + sorted(list(set([f"{c['Class_Name']} (世界線{c['World_Line']})" for c in classes])))
 selected_class = st.sidebar.selectbox("班級", class_options)
 
 # 老師篩選
-teacher_options = ['全部'] + list(df_schedule['Teacher_Name'].unique())
+teacher_options = ['全部'] + sorted(list(set([c['Teacher'] for c in classes])))
 selected_teacher = st.sidebar.selectbox("講師", teacher_options)
 
-# 狀態篩選
-status_options = ['全部', '正常', '已完成', '停課']
-selected_status = st.sidebar.selectbox("狀態", status_options)
+# 難易度篩選
+difficulty_options = ['全部'] + [f'LV{i}' for i in range(1, 6)]
+selected_difficulty = st.sidebar.selectbox("難易度", difficulty_options)
 
 st.sidebar.markdown("---")
 
@@ -151,216 +155,302 @@ if st.sidebar.button("📋 新增補課", use_container_width=True):
     st.sidebar.info("功能開發中...")
 
 # ============================================
+# 套用篩選
+# ============================================
+filtered_df = df_schedule.copy()
+
+if selected_class != '全部':
+    class_name = selected_class.split(' (世界線')[0]
+    world_line = int(selected_class.split('世界線')[1].rstrip(')'))
+    filtered_df = filtered_df[
+        (filtered_df['Class_Name'] == class_name) & 
+        (filtered_df['World_Line'] == world_line)
+    ]
+
+if selected_teacher != '全部':
+    filtered_df = filtered_df[filtered_df['Teacher'] == selected_teacher]
+
+if selected_difficulty != '全部':
+    difficulty_level = int(selected_difficulty.replace('LV', ''))
+    filtered_df = filtered_df[filtered_df['Difficulty'] == difficulty_level]
+
+# ============================================
 # 主畫面
 # ============================================
 
-st.title("📅 排課總覽")
+# 標題列
+col_title1, col_title2, col_title3 = st.columns([1, 2, 1])
 
-# 資訊卡片
-col1, col2, col3, col4 = st.columns(4)
+with col_title1:
+    if st.button("◀", key="prev_date"):
+        if view_mode == "月":
+            new_date = selected_date.replace(day=1) - timedelta(days=1)
+            st.session_state.selected_date = new_date
+            st.rerun()
+        elif view_mode == "週":
+            new_date = selected_date - timedelta(days=7)
+            st.session_state.selected_date = new_date
+            st.rerun()
+        else:
+            new_date = selected_date - timedelta(days=1)
+            st.session_state.selected_date = new_date
+            st.rerun()
 
-with col1:
-    st.metric("📚 總課程數", len(df_schedule))
-with col2:
-    normal_count = len(df_schedule[df_schedule['Status'] == '正常'])
-    st.metric("✅ 正常課程", normal_count)
-with col3:
-    completed_count = len(df_schedule[df_schedule['Status'] == '已完成'])
-    st.metric("📝 已完成", completed_count)
-with col4:
-    class_count = len(classes)
-    st.metric("🏫 活躍班級", class_count)
+with col_title2:
+    if view_mode == "月":
+        st.title(f"📅 {selected_date.year}年{selected_date.month}月")
+    elif view_mode == "週":
+        week_start = selected_date - timedelta(days=selected_date.weekday())
+        week_end = week_start + timedelta(days=6)
+        st.title(f"📅 {week_start.strftime('%Y/%m/%d')} - {week_end.strftime('%m/%d')}")
+    else:
+        st.title(f"📅 {selected_date.strftime('%Y年%m月%d日')} ({['週一','週二','週三','週四','週五','週六','週日'][selected_date.weekday()]})")
+
+with col_title3:
+    if st.button("▶", key="next_date"):
+        if view_mode == "月":
+            if selected_date.month == 12:
+                new_date = selected_date.replace(year=selected_date.year + 1, month=1)
+            else:
+                new_date = selected_date.replace(month=selected_date.month + 1)
+            st.session_state.selected_date = new_date
+            st.rerun()
+        elif view_mode == "週":
+            new_date = selected_date + timedelta(days=7)
+            st.session_state.selected_date = new_date
+            st.rerun()
+        else:
+            new_date = selected_date + timedelta(days=1)
+            st.session_state.selected_date = new_date
+            st.rerun()
 
 st.markdown("---")
 
-# 套用篩選
-filtered_df = df_schedule.copy()
-
-# 日期篩選
-if len(date_range) == 2:
-    start_date, end_date = date_range
-    filtered_df = filtered_df[
-        (pd.to_datetime(filtered_df['Date']).dt.date >= start_date) &
-        (pd.to_datetime(filtered_df['Date']).dt.date <= end_date)
-    ]
-
-# 班級篩選
-if selected_class != '全部':
-    filtered_df = filtered_df[filtered_df['Class_Name'] == selected_class]
-
-# 老師篩選
-if selected_teacher != '全部':
-    filtered_df = filtered_df[filtered_df['Teacher_Name'] == selected_teacher]
-
-# 狀態篩選
-if selected_status != '全部':
-    filtered_df = filtered_df[filtered_df['Status'] == selected_status]
-
-# 排序
-filtered_df = filtered_df.sort_values(['Date', 'Time'])
-
 # ============================================
-# 顯示模式切換
+# 月檢視
 # ============================================
-
-tab1, tab2, tab3 = st.tabs(["📅 週檢視（行事曆）", "📋 列表檢視", "📊 統計分析"])
-
-with tab1:
-    st.subheader("週行事曆檢視")
+if view_mode == "月":
+    st.caption("💡 月模式：顯示主課程名稱 + 難易度顏色")
     
-    if len(filtered_df) == 0:
-        st.warning("沒有符合條件的課程")
-    else:
-        # 取得日期範圍內的所有日期
-        filtered_df['Date_obj'] = pd.to_datetime(filtered_df['Date'])
-        min_date = filtered_df['Date_obj'].min()
-        max_date = filtered_df['Date_obj'].max()
-        
-        # 計算週數
-        current_date = min_date
-        weeks = []
-        
-        while current_date <= max_date:
-            week_start = current_date - timedelta(days=current_date.weekday())
-            week_end = week_start + timedelta(days=6)
-            weeks.append((week_start, week_end))
-            current_date = week_end + timedelta(days=1)
-        
-        # 顯示每一週
-        for week_start, week_end in weeks:
-            st.markdown(f"### 📆 {week_start.strftime('%Y/%m/%d')} - {week_end.strftime('%m/%d')}")
-            
-            # 建立 7 欄（週一到週日）
-            cols = st.columns(7)
-            
-            for i in range(7):
-                day = week_start + timedelta(days=i)
-                day_str = day.strftime('%Y-%m-%d')
-                weekday_name = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'][i]
-                
-                with cols[i]:
-                    # 日期標題
-                    st.markdown(f"**{day.strftime('%m/%d')} {weekday_name}**")
+    cal = get_month_calendar(selected_date.year, selected_date.month)
+    
+    header_cols = st.columns(7)
+    weekdays = ['週一', '週二', '週三', '週四', '週五', '週六', '週日']
+    for i, col in enumerate(header_cols):
+        col.markdown(f"<div style='text-align: center; font-weight: bold; padding: 10px;'>{weekdays[i]}</div>", unsafe_allow_html=True)
+    
+    for week in cal:
+        cols = st.columns(7)
+        for i, day in enumerate(week):
+            with cols[i]:
+                if day == 0:
+                    st.markdown("<div style='height: 120px; background-color: #f8f9fa; border: 1px solid #dee2e6;'></div>", unsafe_allow_html=True)
+                else:
+                    date_str = f"{selected_date.year}-{selected_date.month:02d}-{day:02d}"
+                    day_classes = filtered_df[filtered_df['Date'] == date_str]
                     
-                    # 該日的課程
-                    day_classes = filtered_df[filtered_df['Date'] == day_str].sort_values('Time')
+                    content = f"<div style='min-height: 120px; border: 1px solid #dee2e6; padding: 8px;'>"
+                    content += f"<div style='font-weight: bold; margin-bottom: 8px;'>{day}</div>"
                     
-                    if len(day_classes) == 0:
-                        st.markdown("_無課程_")
-                    else:
+                    if len(day_classes) > 0:
                         for _, row in day_classes.iterrows():
-                            # 根據狀態設定顏色
-                            if row['Status'] == '正常':
-                                color = "#d4edda"
-                                border_color = "#28a745"
-                            elif row['Status'] == '已完成':
-                                color = "#fff3cd"
-                                border_color = "#ffc107"
-                            elif row['Status'] == '停課':
-                                color = "#f8d7da"
-                                border_color = "#dc3545"
-                            else:
-                                color = "#e9ecef"
-                                border_color = "#6c757d"
-                            
-                            # 顯示課程卡片
-                            st.markdown(f"""
-                            <div style="
+                            color = DIFFICULTY_COLORS[row['Difficulty']]
+                            content += f"""
+                            <div style='
                                 background-color: {color};
-                                border-left: 4px solid {border_color};
-                                padding: 8px;
-                                margin-bottom: 8px;
+                                padding: 4px;
+                                margin-bottom: 4px;
                                 border-radius: 4px;
-                                font-size: 12px;
-                            ">
-                                <div style="font-weight: bold; color: #212529;">{row['Time']}</div>
-                                <div style="color: #495057;">{row['Class_Name']}</div>
-                                <div style="color: #6c757d;">👨‍🏫 {row['Teacher_Name']}</div>
-                                <div style="color: #6c757d;">📚 {row['Book_Name']}</div>
-                                {f"<div style='color: #6c757d;'>📖 {row['Chapters']}</div>" if row['Chapters'] != '-' else ''}
+                                font-size: 11px;
+                                cursor: pointer;
+                            '>
+                                {row['Class_Name']}
                             </div>
-                            """, unsafe_allow_html=True)
+                            """
+                    
+                    content += "</div>"
+                    st.markdown(content, unsafe_allow_html=True)
+
+# ============================================
+# 週檢視
+# ============================================
+elif view_mode == "週":
+    st.caption("💡 週模式：顯示課程名稱 + 難易度顏色 + 世界線 + 老師名稱")
+    
+    week_start = selected_date - timedelta(days=selected_date.weekday())
+    week_dates = [week_start + timedelta(days=i) for i in range(7)]
+    
+    time_slots = [f"{h:02d}:00" for h in range(8, 22)]
+    
+    st.markdown("""
+    <style>
+    .week-grid {
+        display: grid;
+        grid-template-columns: 80px repeat(7, 1fr);
+        gap: 1px;
+        background-color: #dee2e6;
+        border: 1px solid #dee2e6;
+    }
+    .time-label {
+        background-color: #f8f9fa;
+        padding: 8px;
+        text-align: center;
+        font-size: 12px;
+        color: #6c757d;
+    }
+    .day-header {
+        background-color: #ffffff;
+        padding: 12px;
+        text-align: center;
+        font-weight: bold;
+        border-bottom: 2px solid #dee2e6;
+    }
+    .time-slot {
+        background-color: #ffffff;
+        min-height: 60px;
+        padding: 4px;
+        position: relative;
+    }
+    .class-card {
+        padding: 8px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        border-left: 4px solid rgba(0,0,0,0.2);
+    }
+    .class-card:hover {
+        opacity: 0.8;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    header_html = "<div class='week-grid'>"
+    header_html += "<div class='time-label'>時間</div>"
+    for date in week_dates:
+        weekday = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'][date.weekday()]
+        header_html += f"<div class='day-header'>{date.month}/{date.day}<br>{weekday}</div>"
+    
+    for time_slot in time_slots:
+        header_html += f"<div class='time-label'>{time_slot}</div>"
+        
+        for date in week_dates:
+            date_str = date.strftime('%Y-%m-%d')
             
-            st.markdown("---")
-
-with tab2:
-    st.subheader("課程列表")
+            slot_classes = filtered_df[
+                (filtered_df['Date'] == date_str) & 
+                (filtered_df['Time'].str.startswith(time_slot.split(':')[0]))
+            ]
+            
+            header_html += "<div class='time-slot'>"
+            
+            if len(slot_classes) > 0:
+                for _, row in slot_classes.iterrows():
+                    color = DIFFICULTY_COLORS[row['Difficulty']]
+                    header_html += f"""
+                    <div class='class-card' style='background-color: {color};'>
+                        <div style='font-weight: bold;'>{row['Class_Name']}</div>
+                        <div style='font-size: 10px; color: #495057;'>世界線{row['World_Line']} | {row['Teacher']}</div>
+                        <div style='font-size: 10px; color: #6c757d;'>{row['Book']}</div>
+                    </div>
+                    """
+            
+            header_html += "</div>"
     
-    # 顯示篩選後的資料
-    if len(filtered_df) == 0:
-        st.warning("沒有符合條件的課程")
+    header_html += "</div>"
+    st.markdown(header_html, unsafe_allow_html=True)
+
+# ============================================
+# 日檢視
+# ============================================
+else:
+    st.caption("💡 日模式：顯示完整課程資訊 + 每日課程內容")
+    
+    date_str = selected_date.strftime('%Y-%m-%d')
+    day_classes = filtered_df[filtered_df['Date'] == date_str].sort_values('Time')
+    
+    if len(day_classes) == 0:
+        st.info("📭 今日無課程")
     else:
-        # 自訂顯示欄位
-        display_df = filtered_df[[
-            'Date', 'Weekday', 'Time', 'Class_Name', 
-            'Teacher_Name', 'Classroom', 'Book_Name', 
-            'Chapters', 'Status', 'Note'
-        ]].copy()
+        time_slots = [f"{h:02d}:00" for h in range(8, 22)]
         
-        # 重新命名欄位
-        display_df.columns = [
-            '日期', '星期', '時間', '班級', 
-            '講師', '教室', '教材', 
-            '章節', '狀態', '備註'
-        ]
+        st.markdown("""
+        <style>
+        .day-timeline {
+            position: relative;
+            padding-left: 100px;
+        }
+        .time-marker {
+            position: absolute;
+            left: 0;
+            width: 80px;
+            text-align: right;
+            padding-right: 15px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .timeline-slot {
+            border-left: 2px solid #dee2e6;
+            min-height: 80px;
+            padding-left: 20px;
+            margin-bottom: 0;
+        }
+        .day-class-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 6px solid;
+        }
+        </style>
+        """, unsafe_allow_html=True)
         
-        # 狀態顏色標記
-        def color_status(val):
-            if val == '正常':
-                return 'background-color: #d4edda; color: #155724'
-            elif val == '已完成':
-                return 'background-color: #fff3cd; color: #856404'
-            elif val == '停課':
-                return 'background-color: #f8d7da; color: #721c24'
-            return ''
+        timeline_html = "<div class='day-timeline'>"
         
-        styled_df = display_df.style.applymap(
-            color_status, 
-            subset=['狀態']
-        )
+        for time_slot in time_slots:
+            timeline_html += f"<div class='time-marker' style='top: 0;'>{time_slot}</div>"
+            timeline_html += "<div class='timeline-slot'>"
+            
+            slot_classes = day_classes[day_classes['Time'].str.startswith(time_slot.split(':')[0])]
+            
+            if len(slot_classes) > 0:
+                for _, row in slot_classes.iterrows():
+                    color = DIFFICULTY_COLORS[row['Difficulty']]
+                    timeline_html += f"""
+                    <div class='day-class-card' style='border-left-color: {color};'>
+                        <div style='display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;'>
+                            <div>
+                                <div style='font-size: 20px; font-weight: bold; margin-bottom: 4px;'>{row['Class_Name']}</div>
+                                <div style='color: #6c757d; font-size: 14px;'>世界線 {row['World_Line']} | 難易度 LV{row['Difficulty']}</div>
+                            </div>
+                            <div style='text-align: right;'>
+                                <div style='font-size: 18px; font-weight: bold;'>{row['Time']}</div>
+                            </div>
+                        </div>
+                        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; background-color: #f8f9fa; border-radius: 4px;'>
+                            <div>
+                                <div style='font-size: 12px; color: #6c757d; margin-bottom: 4px;'>👨‍🏫 講師</div>
+                                <div style='font-weight: bold;'>{row['Teacher']}</div>
+                            </div>
+                            <div>
+                                <div style='font-size: 12px; color: #6c757d; margin-bottom: 4px;'>📚 教材</div>
+                                <div style='font-weight: bold;'>{row['Book']}</div>
+                            </div>
+                        </div>
+                        <div style='margin-top: 12px; padding: 8px; background-color: {color}; border-radius: 4px;'>
+                            <div style='font-size: 12px; color: #495057;'>📝 今日課程內容：Unit 3 - Colors and Shapes</div>
+                        </div>
+                    </div>
+                    """
+            
+            timeline_html += "</div>"
         
-        st.dataframe(
-            styled_df,
-            use_container_width=True,
-            hide_index=True,
-            height=500
-        )
-        
-        st.caption(f"📊 顯示 {len(filtered_df)} 筆課程")
-
-with tab3:
-    st.subheader("統計分析")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("#### 📊 各班級課程數")
-        class_stats = filtered_df.groupby('Class_Name').size().reset_index(name='課程數')
-        st.dataframe(class_stats, use_container_width=True, hide_index=True)
-    
-    with col2:
-        st.markdown("#### 👨‍🏫 各講師課程數")
-        teacher_stats = filtered_df.groupby('Teacher_Name').size().reset_index(name='課程數')
-        st.dataframe(teacher_stats, use_container_width=True, hide_index=True)
-    
-    st.markdown("---")
-    
-    col3, col4 = st.columns(2)
-    
-    with col3:
-        st.markdown("#### 📚 教材使用統計")
-        book_stats = filtered_df.groupby('Book_Name').size().reset_index(name='使用次數')
-        st.dataframe(book_stats, use_container_width=True, hide_index=True)
-    
-    with col4:
-        st.markdown("#### 🏫 教室使用統計")
-        classroom_stats = filtered_df.groupby('Classroom').size().reset_index(name='使用次數')
-        st.dataframe(classroom_stats, use_container_width=True, hide_index=True)
+        timeline_html += "</div>"
+        st.markdown(timeline_html, unsafe_allow_html=True)
 
 # ============================================
 # 底部資訊
 # ============================================
-
 st.markdown("---")
-st.caption("🔧 Sun Kids 智慧排課管理系統 v1.0 (MVP) | Phase 1: 基本顯示功能")
-st.caption("💡 提示：目前使用模擬資料，Phase 2 將連接 Google Sheets")
+st.caption("🔧 Sun Kids 智慧排課管理系統 v1.0 | 使用模擬資料")
