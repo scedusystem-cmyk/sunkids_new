@@ -10,7 +10,7 @@ from config import get_spreadsheet
 @st.cache_data(ttl=60)
 def load_config_syllabus():
     """
-    讀取 Config_Syllabus 工作表
+    讀取 Config_Syllabus 工作表（新格式：包含 SyllabusID 和 SyllabusName）
     返回 DataFrame
     """
     try:
@@ -26,6 +26,27 @@ def load_config_syllabus():
     
     except Exception as e:
         st.error(f"❌ 讀取 Config_Syllabus 失敗: {str(e)}")
+        return None
+
+@st.cache_data(ttl=60)
+def load_config_courseline():
+    """
+    讀取 Config_CourseLine 工作表
+    返回 DataFrame
+    """
+    try:
+        spreadsheet = get_spreadsheet()
+        if not spreadsheet:
+            return None
+        
+        worksheet = spreadsheet.worksheet("Config_CourseLine")
+        data = worksheet.get_all_records()
+        df = pd.DataFrame(data)
+        
+        return df
+    
+    except Exception as e:
+        st.error(f"❌ 讀取 Config_CourseLine 失敗: {str(e)}")
         return None
 
 @st.cache_data(ttl=60)
@@ -50,9 +71,9 @@ def load_config_teacher():
         return None
 
 @st.cache_data(ttl=60)
-def load_config_class():
+def load_config_courseline():
     """
-    讀取 Config_Class 工作表
+    讀取 Config_CourseLine 工作表
     返回 DataFrame
     """
     try:
@@ -60,14 +81,14 @@ def load_config_class():
         if not spreadsheet:
             return None
         
-        worksheet = spreadsheet.worksheet("Config_Class")
+        worksheet = spreadsheet.worksheet("Config_CourseLine")
         data = worksheet.get_all_records()
         df = pd.DataFrame(data)
         
         return df
     
     except Exception as e:
-        st.error(f"❌ 讀取 Config_Class 失敗: {str(e)}")
+        st.error(f"❌ 讀取 Config_CourseLine 失敗: {str(e)}")
         return None
 
 @st.cache_data(ttl=30)
@@ -172,6 +193,34 @@ def append_lesson_log(log_data):
     
     except Exception as e:
         st.error(f"❌ 新增 Lesson_Log 失敗: {str(e)}")
+        return False
+
+def append_courseline(courseline_data):
+    """
+    新增一筆課綱路線至 Config_CourseLine
+    courseline_data: dict，包含所有欄位
+    """
+    try:
+        spreadsheet = get_spreadsheet()
+        if not spreadsheet:
+            return False
+        
+        worksheet = spreadsheet.worksheet("Config_CourseLine")
+        
+        # 取得表頭
+        headers = worksheet.row_values(1)
+        
+        # 依照表頭順序建立資料列
+        row_data = [courseline_data.get(header, "") for header in headers]
+        
+        # 新增資料
+        worksheet.append_row(row_data)
+        
+        st.success("✅ 課綱路線建立成功")
+        return True
+    
+    except Exception as e:
+        st.error(f"❌ 新增課綱路線失敗: {str(e)}")
         return False
 
 def clear_cache():
