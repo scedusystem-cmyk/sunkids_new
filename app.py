@@ -11,7 +11,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import calendar
 from config import get_spreadsheet
-from sheets_handler import load_master_schedule, load_config_class
+from sheets_handler import load_master_schedule, load_config_courseline, load_config_syllabus
 
 # ============================================
 # 頁面設定
@@ -63,29 +63,23 @@ def load_schedule_data():
             return pd.DataFrame(), []
         
         if len(df_schedule) == 0:
-            st.warning("⚠️ Master_Schedule 無資料，請先在設定頁面同步班級資料")
+            st.warning("⚠️ Master_Schedule 無資料，請先新增課綱路線")
             return pd.DataFrame(), []
         
-        st.info(f"📊 Master_Schedule 共 {len(df_schedule)} 筆資料")
+        st.info(f"📊 Master_Schedule 共 {len(df_schedule) 筆資料")
         
         # 確保日期格式
         df_schedule['Date'] = pd.to_datetime(df_schedule['Date'], errors='coerce')
         df_schedule['Date_Str'] = df_schedule['Date'].dt.strftime('%Y-%m-%d')
         
-        # 載入 Config_Class 取得班級資訊
-        df_class = load_config_class()
+        # 載入 Config_CourseLine 取得難易度
+        df_courseline = load_config_courseline()
         
-        if df_class is not None and len(df_class) > 0:
-            # 合併班級資訊（取得難易度）
-            # 假設 Level_ID 的數字部分就是難易度
-            df_class['Difficulty'] = df_class['Level_ID'].str.extract(r'(\d+)').astype(int)
-            df_schedule = df_schedule.merge(
-                df_class[['Class_ID', 'Difficulty']], 
-                on='Class_ID', 
-                how='left'
-            )
+        if df_courseline is not None and len(df_courseline) > 0:
+            # 從 Level_ID 提取難易度
+            df_schedule['Difficulty'] = df_schedule['Level_ID'].str.extract(r'(\d+)').astype(int)
         else:
-            # 如果無法取得難易度，預設為 3
+            # 預設難易度
             df_schedule['Difficulty'] = 3
         
         # 整理欄位
@@ -95,8 +89,8 @@ def load_schedule_data():
             'Book_Full_Name': 'Book'
         })
         
-        # 取得班級清單（用於篩選）
-        classes = df_schedule[['Class_ID', 'Class_Name', 'Teacher', 'Difficulty']].drop_duplicates().to_dict('records')
+        # 取得課程清單（用於篩選）
+        classes = df_schedule[['CourseLineID', 'CourseName', 'Teacher', 'Difficulty']].drop_duplicates().to_dict('records')
         
         return df_schedule, classes
     
@@ -166,9 +160,9 @@ if df_schedule.empty:
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔍 篩選條件")
 
-# 班級篩選
-class_options = ['全部'] + sorted(list(set([c['Class_Name'] for c in classes])))
-selected_class = st.sidebar.selectbox("班級", class_options)
+# 課程篩選
+class_options = ['全部'] + sorted(list(set([c['CourseName'] for c in classes])))
+selected_class = st.sidebar.selectbox("課程", class_options)
 
 # 老師篩選
 teacher_options = ['全部'] + sorted(list(set([c['Teacher'] for c in classes])))
@@ -182,15 +176,64 @@ st.sidebar.markdown("---")
 
 # 快速操作按鈕
 st.sidebar.subheader("⚡ 快速操作")
+
+# 新增課綱路線按鈕
+if st.sidebar.button("➕ 新增課綱路線", use_container_width=True, type="primary"):
+    st.session_state.show_create_dialog = True
+
+# 同步班級資料按鈕（舊功能，保留但改為次要）
+if st.sidebar.button("🔄 同步所有課綱路線", use_container_width=True):
+    with st.spinner("正在產生排程..."):
+        from schedule_generator import generate_all_schedules
+        from sheets_handler import write_master_schedule, clear_cache
+        
+        # 載入設定檔
+        df_courseline = load_config_courseline()
+        df_syllabus = load_config_syllabus()
+        
+        if df_courseline is None or df_syllabus is None:
+            st.sidebar.error("❌ 無法載入設定檔")
+        elif len(df_courseline) == 0:
+            st.sidebar.warning("⚠️ Config_CourseLine 無資料，請先新增課綱路線")
+        elif len(df_syllabus) == 0:
+            st.sidebar.warning("⚠️ Config_Syllabus 無資料")
+        else:
+            # 產生排程
+            schedule = generate_all_schedules(df_courseline, df_syllabus, weeks=12)
+            
+            if len(schedule) == 0:
+                st.sidebar.warning("⚠️ 無法產生排程，請檢查設定")
+            else:
+                # 寫入 Google Sheets
+                success = write_master_schedule(schedule)
+                
+                if success:
+                    st.sidebar.success(f"✅ 成功產生 {len(schedule)} 筆課程記錄")
+                    # 清除快取，重新載入
+                    clear_cache()
+                    st.rerun()
+
 if st.sidebar.button("🔄 重新載入資料", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
-if st.sidebar.button("➕ 新增班級", use_container_width=True):
-    st.sidebar.info("功能開發中...")
-if st.sidebar.button("🚫 標記停課日", use_container_width=True):
-    st.sidebar.info("功能開發中...")
-if st.sidebar.button("📋 新增補課", use_container_width=True):
-    st.sidebar.info("功能開發中...")
+
+# 顯示新增課綱路線對話框
+if st.session_state.get('show_create_dialog', False):
+    from ui_create_courseline import show_create_courseline_dialog
+    
+    # 使用彈出式容器
+    with st.container():
+        st.markdown("---")
+        show_create_courseline_dialog()
+        st.markdown("---")
+        
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            if st.button("❌ 取消", use_container_width=True):
+                st.session_state.show_create_dialog = False
+                st.rerun()
+
+st.sidebar.markdown("---")
 
 # ============================================
 # 套用篩選
@@ -198,7 +241,7 @@ if st.sidebar.button("📋 新增補課", use_container_width=True):
 filtered_df = df_schedule.copy()
 
 if selected_class != '全部':
-    filtered_df = filtered_df[filtered_df['Class_Name'] == selected_class]
+    filtered_df = filtered_df[filtered_df['CourseName'] == selected_class]
 
 if selected_teacher != '全部':
     filtered_df = filtered_df[filtered_df['Teacher'] == selected_teacher]
@@ -302,7 +345,7 @@ if view_mode == "月":
                     if len(day_classes) > 0:
                         for _, row in day_classes.iterrows():
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
-                            cards_html += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 6px; margin-bottom: 6px; border-radius: 4px; font-size: 14px; font-weight: 600;'>{row['Time']} {row['Class_Name']}</div>"
+                            cards_html += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 6px; margin-bottom: 6px; border-radius: 4px; font-size: 14px; font-weight: 600;'>{row['Time']} {row['CourseName']}</div>"
                     
                     # 完整格子 HTML（固定高度）
                     cell_html = f"<div style='height: 180px; border: 1px solid #dee2e6; padding: 8px; overflow-y: auto;'><div style='font-weight: bold; margin-bottom: 8px; font-size: 16px;'>{day}</div>{cards_html}</div>"
@@ -368,7 +411,7 @@ elif view_mode == "週":
                     if len(slot_classes) > 0:
                         for _, row in slot_classes.iterrows():
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
-                            cell_content += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 10px; border-radius: 4px; margin-bottom: 6px; border-left: 4px solid rgba(0,0,0,0.3);'><div style='font-weight: 600; font-size: 15px;'>{row['Class_Name']}</div><div style='font-size: 13px; margin-top: 4px;'>{row['Teacher']}</div><div style='font-size: 13px;'>{row['Book']}</div></div>"
+                            cell_content += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 10px; border-radius: 4px; margin-bottom: 6px; border-left: 4px solid rgba(0,0,0,0.3);'><div style='font-weight: 600; font-size: 15px;'>{row['CourseName']}</div><div style='font-size: 13px; margin-top: 4px;'>{row['Teacher']}</div><div style='font-size: 13px;'>{row['Book']}</div></div>"
                     cell_content += "</div>"
                     st.markdown(cell_content, unsafe_allow_html=True)
 
@@ -400,7 +443,7 @@ else:
             '>
                 <div style='display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;'>
                     <div>
-                        <div style='font-size: 24px; font-weight: bold; margin-bottom: 6px;'>{row['Class_Name']}</div>
+                        <div style='font-size: 24px; font-weight: bold; margin-bottom: 6px;'>{row['CourseName']}</div>
                         <div style='color: #6c757d; font-size: 16px;'>難易度 LV{row['Difficulty']}</div>
                     </div>
                     <div style='text-align: right;'>
