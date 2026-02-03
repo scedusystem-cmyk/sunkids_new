@@ -82,9 +82,24 @@ def load_schedule_data():
             # 預設難易度
             df_schedule['Difficulty'] = 3
         
+        # 載入 Config_Teacher 取得老師名字
+        from sheets_handler import load_config_teacher
+        df_teacher = load_config_teacher()
+        
+        if df_teacher is not None and len(df_teacher) > 0:
+            # 合併老師名字
+            df_schedule = df_schedule.merge(
+                df_teacher[['Teacher_ID', 'Teacher_Name']], 
+                on='Teacher_ID', 
+                how='left'
+            )
+            # 如果有 Teacher_Name 就用，沒有就用 Teacher_ID
+            df_schedule['Teacher'] = df_schedule['Teacher_Name'].fillna(df_schedule['Teacher_ID'])
+        else:
+            # 如果沒有老師資料，就用 Teacher_ID
+            df_schedule['Teacher'] = df_schedule['Teacher_ID']
+        
         # 整理欄位名稱（只 rename 需要改的）
-        if 'Teacher_ID' in df_schedule.columns:
-            df_schedule = df_schedule.rename(columns={'Teacher_ID': 'Teacher'})
         if 'Book_Full_Name' in df_schedule.columns:
             df_schedule = df_schedule.rename(columns={'Book_Full_Name': 'Book'})
         

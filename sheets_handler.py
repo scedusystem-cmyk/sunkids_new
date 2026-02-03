@@ -70,27 +70,6 @@ def load_config_teacher():
         st.error(f"❌ 讀取 Config_Teacher 失敗: {str(e)}")
         return None
 
-@st.cache_data(ttl=60)
-def load_config_courseline():
-    """
-    讀取 Config_CourseLine 工作表
-    返回 DataFrame
-    """
-    try:
-        spreadsheet = get_spreadsheet()
-        if not spreadsheet:
-            return None
-        
-        worksheet = spreadsheet.worksheet("Config_CourseLine")
-        data = worksheet.get_all_records()
-        df = pd.DataFrame(data)
-        
-        return df
-    
-    except Exception as e:
-        st.error(f"❌ 讀取 Config_CourseLine 失敗: {str(e)}")
-        return None
-
 @st.cache_data(ttl=30)
 def load_master_schedule():
     """

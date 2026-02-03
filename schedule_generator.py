@@ -25,7 +25,7 @@ def generate_schedule(courseline_config, syllabus_config, weeks=12):
     courseline_id = courseline_config['CourseLineID']
     course_name = courseline_config['CourseName']
     syllabus_id = courseline_config['SyllabusID']
-    weekday = int(courseline_config['Weekday'])  # 0=週一, 6=週日
+    weekday = int(courseline_config['Weekday'])  # 1=週一, 7=週日
     time = courseline_config['Time']
     classroom = courseline_config['Classroom']
     teacher_id = courseline_config['Teacher_ID']
@@ -43,8 +43,10 @@ def generate_schedule(courseline_config, syllabus_config, weeks=12):
     
     total_books = len(syllabus_data)
     
-    # 計算第一次上課日期（從 start_date 開始，找到第一個符合 weekday 的日期）
-    days_ahead = weekday - start_date.weekday()
+    # 計算第一次上課日期（Weekday: 1=週一, 7=週日）
+    # start_date.weekday(): 0=週一, 6=週日
+    target_weekday = weekday - 1  # 轉換為 0-6 格式
+    days_ahead = target_weekday - start_date.weekday()
     if days_ahead < 0:
         days_ahead += 7
     first_class_date = start_date + timedelta(days=days_ahead)

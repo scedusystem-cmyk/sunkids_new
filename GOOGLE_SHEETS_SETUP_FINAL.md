@@ -89,13 +89,13 @@ CourseLineID	CourseName	SyllabusID	Weekday	Time	Classroom	Teacher_ID	Start_Date	
 - 不需要手動填入任何資料
 
 **Weekday 對照表（參考用）：**
-- 0 = 週一
-- 1 = 週二
-- 2 = 週三
-- 3 = 週四
-- 4 = 週五
-- 5 = 週六
-- 6 = 週日
+- 1 = 週一
+- 2 = 週二
+- 3 = 週三
+- 4 = 週四
+- 5 = 週五
+- 6 = 週六
+- 7 = 週日
 
 ---
 
