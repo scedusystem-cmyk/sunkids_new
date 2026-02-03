@@ -161,15 +161,17 @@ st.sidebar.subheader("🗓️ 日期選擇")
 if 'current_date' not in st.session_state:
     st.session_state.current_date = datetime(2026, 2, 3)
 
+# 日期選擇器（使用 on_change 回調）
+def on_date_change():
+    selected = st.session_state.date_picker
+    st.session_state.current_date = datetime.combine(selected, datetime.min.time())
+
 selected_date = st.sidebar.date_input(
     "選擇日期",
-    value=st.session_state.current_date,
-    key="date_picker"
+    value=st.session_state.current_date.date(),
+    key="date_picker",
+    on_change=on_date_change
 )
-
-# 同步日期選擇器的變更
-if selected_date != st.session_state.current_date.date():
-    st.session_state.current_date = datetime.combine(selected_date, datetime.min.time())
 
 # 載入資料
 df_schedule, classes = load_mock_data()
@@ -249,9 +251,6 @@ with col_title1:
         else:
             # 昨天
             st.session_state.current_date = st.session_state.current_date - timedelta(days=1)
-        
-        # 清除快取並重新載入
-        load_mock_data.clear()
         st.rerun()
 
 with col_title2:
@@ -286,9 +285,6 @@ with col_title3:
         else:
             # 明天
             st.session_state.current_date = st.session_state.current_date + timedelta(days=1)
-        
-        # 清除快取並重新載入
-        load_mock_data.clear()
         st.rerun()
 
 st.markdown("---")
@@ -312,7 +308,7 @@ if view_mode == "月":
         for i, day in enumerate(week):
             with cols[i]:
                 if day == 0:
-                    st.markdown("<div style='height: 120px; background-color: #f8f9fa; border: 1px solid #dee2e6;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='height: 180px; background-color: #f8f9fa; border: 1px solid #dee2e6;'></div>", unsafe_allow_html=True)
                 else:
                     date_str = f"{current_date.year}-{current_date.month:02d}-{day:02d}"
                     day_classes = filtered_df[filtered_df['Date'] == date_str]
@@ -322,10 +318,10 @@ if view_mode == "月":
                     if len(day_classes) > 0:
                         for _, row in day_classes.iterrows():
                             color = DIFFICULTY_COLORS[row['Difficulty']]
-                            cards_html += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 6px; margin-bottom: 6px; border-radius: 4px; font-size: 15px; font-weight: 600;'>{row['Class_Name']}</div>"
+                            cards_html += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 6px; margin-bottom: 6px; border-radius: 4px; font-size: 14px; font-weight: 600;'>{row['Time']} {row['Class_Name']}</div>"
                     
-                    # 完整格子 HTML
-                    cell_html = f"<div style='min-height: 120px; border: 1px solid #dee2e6; padding: 8px;'><div style='font-weight: bold; margin-bottom: 8px;'>{day}</div>{cards_html}</div>"
+                    # 完整格子 HTML（固定高度）
+                    cell_html = f"<div style='height: 180px; border: 1px solid #dee2e6; padding: 8px; overflow-y: auto;'><div style='font-weight: bold; margin-bottom: 8px; font-size: 16px;'>{day}</div>{cards_html}</div>"
                     st.markdown(cell_html, unsafe_allow_html=True)
 
 # ============================================
@@ -357,22 +353,34 @@ elif view_mode == "週":
         if has_class:
             active_time_slots.append(time_slot)
     
-    # 使用 Streamlit 原生表格而非 HTML
+    # 使用表格樣式
+    st.markdown("""
+    <style>
+    .week-table-cell {
+        border: 2px solid #dee2e6;
+        padding: 8px;
+        min-height: 100px;
+        background-color: white;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # 建立表頭
     cols_header = st.columns([1] + [3]*7)
-    cols_header[0].markdown("**時間**")
+    with cols_header[0]:
+        st.markdown("<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 16px;'>時間</div>", unsafe_allow_html=True)
     for i, date in enumerate(week_dates):
         weekday = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'][date.weekday()]
-        cols_header[i+1].markdown(f"**{date.month}/{date.day} {weekday}**")
-    
-    st.markdown("---")
+        with cols_header[i+1]:
+            st.markdown(f"<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 16px;'>{date.month}/{date.day}<br>{weekday}</div>", unsafe_allow_html=True)
     
     # 建立每個時段的行
     for time_slot in active_time_slots:
         cols = st.columns([1] + [3]*7)
         
         # 時間標籤
-        cols[0].markdown(f"**{time_slot}**")
+        with cols[0]:
+            st.markdown(f"<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 18px;'>{time_slot}</div>", unsafe_allow_html=True)
         
         # 每一天的課程
         for i, date in enumerate(week_dates):
@@ -383,26 +391,14 @@ elif view_mode == "週":
                 (filtered_df['Time'].str.startswith(time_slot.split(':')[0]))
             ]
             
-            if len(slot_classes) > 0:
-                with cols[i+1]:
+            with cols[i+1]:
+                cell_content = "<div class='week-table-cell'>"
+                if len(slot_classes) > 0:
                     for _, row in slot_classes.iterrows():
                         color = DIFFICULTY_COLORS[row['Difficulty']]
-                        st.markdown(f"""
-                        <div style='
-                            background-color: {color};
-                            color: {TEXT_COLOR};
-                            padding: 10px;
-                            border-radius: 4px;
-                            margin-bottom: 6px;
-                            border-left: 4px solid rgba(0,0,0,0.3);
-                        '>
-                            <div style='font-weight: 600; font-size: 15px;'>{row['Class_Name']}</div>
-                            <div style='font-size: 13px; margin-top: 4px;'>世界線{row['World_Line']} | {row['Teacher']}</div>
-                            <div style='font-size: 13px;'>{row['Book']}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-        
-        st.markdown("---")
+                        cell_content += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 10px; border-radius: 4px; margin-bottom: 6px; border-left: 4px solid rgba(0,0,0,0.3);'><div style='font-weight: 600; font-size: 15px;'>{row['Class_Name']}</div><div style='font-size: 13px; margin-top: 4px;'>世界線{row['World_Line']} | {row['Teacher']}</div><div style='font-size: 13px;'>{row['Book']}</div></div>"
+                cell_content += "</div>"
+                st.markdown(cell_content, unsafe_allow_html=True)
 
 # ============================================
 # 日檢視
