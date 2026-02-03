@@ -70,7 +70,7 @@ def load_schedule_data():
         
         # 確保日期格式
         df_schedule['Date'] = pd.to_datetime(df_schedule['Date'], errors='coerce')
-        df_schedule['Date_Str'] = df_schedule['Date'].dt.strftime('%Y-%m-%d')
+        df_schedule['Date'] = df_schedule['Date'].dt.strftime('%Y-%m-%d')
         
         # 載入 Config_CourseLine 取得難易度
         df_courseline = load_config_courseline()
@@ -82,12 +82,11 @@ def load_schedule_data():
             # 預設難易度
             df_schedule['Difficulty'] = 3
         
-        # 整理欄位
-        df_schedule = df_schedule.rename(columns={
-            'Date_Str': 'Date',
-            'Teacher_ID': 'Teacher',
-            'Book_Full_Name': 'Book'
-        })
+        # 整理欄位名稱（只 rename 需要改的）
+        if 'Teacher_ID' in df_schedule.columns:
+            df_schedule = df_schedule.rename(columns={'Teacher_ID': 'Teacher'})
+        if 'Book_Full_Name' in df_schedule.columns:
+            df_schedule = df_schedule.rename(columns={'Book_Full_Name': 'Book'})
         
         # 取得課程清單（用於篩選）
         classes = df_schedule[['CourseLineID', 'CourseName', 'Teacher', 'Difficulty']].drop_duplicates().to_dict('records')
