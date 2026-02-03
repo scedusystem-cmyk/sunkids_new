@@ -121,8 +121,15 @@ def show_create_courseline_dialog():
         # 顯示該課綱的教材列表
         with st.expander("📚 查看課綱內容"):
             syllabus_detail = df_syllabus[df_syllabus['SyllabusID'] == syllabus_id]
+            # 相容舊欄位名稱
+            display_columns = ['Sequence', 'Book_Full_Name']
+            if 'Unit' in syllabus_detail.columns:
+                display_columns.append('Unit')
+            elif 'Chapters' in syllabus_detail.columns:
+                display_columns.append('Chapters')
+            
             st.dataframe(
-                syllabus_detail[['Sequence', 'Book_Full_Name', 'Unit']],
+                syllabus_detail[display_columns],
                 use_container_width=True,
                 hide_index=True
             )

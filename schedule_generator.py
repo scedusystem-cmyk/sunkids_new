@@ -61,6 +61,9 @@ def generate_schedule(courseline_config, syllabus_config, weeks=12):
         book_index = lesson_index % total_books
         book_info = syllabus_data.iloc[book_index]
         
+        # 相容舊欄位名稱（Chapters）和新欄位名稱（Unit）
+        unit_value = book_info.get('Unit', book_info.get('Chapters', ''))
+        
         # 建立課程記錄
         slot = {
             'Slot_ID': str(uuid.uuid4()),
@@ -73,9 +76,9 @@ def generate_schedule(courseline_config, syllabus_config, weeks=12):
             'Classroom': classroom,
             'Teacher_ID': teacher_id,
             'Level_ID': level_id,
-            'Book_Code': book_info['Book_Code'],
+            'Book_Code': book_info.get('Book_Code', ''),
             'Book_Full_Name': book_info['Book_Full_Name'],
-            'Unit': book_info['Unit'],
+            'Unit': unit_value,
             'Status': '正常',
             'Note': '',
             'Created_At': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
