@@ -19,8 +19,19 @@ def load_config_syllabus():
             return None
         
         worksheet = spreadsheet.worksheet("Config_Syllabus")
-        data = worksheet.get_all_records()
+        
+        # 先取得原始表頭
+        raw_headers = worksheet.row_values(1)
+        
+        # 過濾空白欄位，建立乾淨的表頭對照
+        clean_headers = [h if h.strip() else f"_empty_{i}" for i, h in enumerate(raw_headers)]
+        
+        # 使用自訂表頭讀取資料
+        data = worksheet.get_all_records(expected_headers=clean_headers)
         df = pd.DataFrame(data)
+        
+        # 移除空白欄位
+        df = df[[col for col in df.columns if not col.startswith('_empty_')]]
         
         return df
     
@@ -40,8 +51,16 @@ def load_config_courseline():
             return None
         
         worksheet = spreadsheet.worksheet("Config_CourseLine")
-        data = worksheet.get_all_records()
+        
+        # 先取得原始表頭，過濾空白欄位
+        raw_headers = worksheet.row_values(1)
+        clean_headers = [h if h.strip() else f"_empty_{i}" for i, h in enumerate(raw_headers)]
+        
+        data = worksheet.get_all_records(expected_headers=clean_headers)
         df = pd.DataFrame(data)
+        
+        # 移除空白欄位
+        df = df[[col for col in df.columns if not col.startswith('_empty_')]]
         
         return df
     
@@ -61,8 +80,16 @@ def load_config_teacher():
             return None
         
         worksheet = spreadsheet.worksheet("Config_Teacher")
-        data = worksheet.get_all_records()
+        
+        # 先取得原始表頭，過濾空白欄位
+        raw_headers = worksheet.row_values(1)
+        clean_headers = [h if h.strip() else f"_empty_{i}" for i, h in enumerate(raw_headers)]
+        
+        data = worksheet.get_all_records(expected_headers=clean_headers)
         df = pd.DataFrame(data)
+        
+        # 移除空白欄位
+        df = df[[col for col in df.columns if not col.startswith('_empty_')]]
         
         return df
     
@@ -82,8 +109,16 @@ def load_master_schedule():
             return None
         
         worksheet = spreadsheet.worksheet("Master_Schedule")
-        data = worksheet.get_all_records()
+        
+        # 先取得原始表頭，過濾空白欄位
+        raw_headers = worksheet.row_values(1)
+        clean_headers = [h if h.strip() else f"_empty_{i}" for i, h in enumerate(raw_headers)]
+        
+        data = worksheet.get_all_records(expected_headers=clean_headers)
         df = pd.DataFrame(data)
+        
+        # 移除空白欄位
+        df = df[[col for col in df.columns if not col.startswith('_empty_')]]
         
         # 確保日期格式正確
         if not df.empty and 'Date' in df.columns:
