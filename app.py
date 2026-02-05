@@ -66,7 +66,15 @@ def load_schedule_data():
             st.warning("⚠️ Master_Schedule 無資料，請先新增課綱路線")
             return pd.DataFrame(), []
         
-        st.info(f"📊 Master_Schedule 共 {len(df_schedule)} 筆資料")
+        original_count = len(df_schedule)
+        st.info(f"📊 Master_Schedule 共 {original_count} 筆資料")
+        
+        # 去除重複資料（根據 Slot_ID）
+        df_schedule = df_schedule.drop_duplicates(subset=['Slot_ID'], keep='first')
+        
+        if len(df_schedule) < original_count:
+            removed = original_count - len(df_schedule)
+            st.warning(f"⚠️ 已移除 {removed} 筆重複資料（Slot_ID 重複）")
         
         # 確保日期格式
         df_schedule['Date'] = pd.to_datetime(df_schedule['Date'], errors='coerce')
@@ -478,14 +486,20 @@ else:
         for _, row in day_classes.iterrows():
             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
             
-            # 取得課綱名稱（需要從 Config_Syllabus 讀取）
-            syllabus_name = row.get('SyllabusID', '-')
-            # 如果有 SyllabusName 欄位就用，否則顯示 SyllabusID
-            if 'SyllabusName' in row and pd.notna(row.get('SyllabusName')):
-                syllabus_name = row['SyllabusName']
+            # 安全取得課綱名稱
+            syllabus_name = '-'
+            if 'SyllabusName' in row.index and pd.notna(row['SyllabusName']):
+                syllabus_name = str(row['SyllabusName'])
+            elif 'SyllabusID' in row.index and pd.notna(row['SyllabusID']):
+                syllabus_name = str(row['SyllabusID'])
             
-            classroom = row.get('Classroom', '-')
-            unit = row.get('Unit', '-')
+            classroom = str(row.get('Classroom', '-'))
+            unit = str(row.get('Unit', '-'))
+            course_name = str(row['CourseName'])
+            time = str(row['Time'])
+            difficulty = str(row['Difficulty'])
+            teacher = str(row['Teacher'])
+            book = str(row.get('Book', '-'))
             
             # 課程卡片（全部靠左排列）
             st.markdown(f"""
@@ -497,14 +511,14 @@ else:
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 border-left: 8px solid {color};
             '>
-                <div style='font-size: 20px; font-weight: bold; color: #495057; margin-bottom: 8px;'>⏰ {row['Time']}</div>
-                <div style='font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #212529;'>{row['CourseName']}</div>
+                <div style='font-size: 20px; font-weight: bold; color: #495057; margin-bottom: 8px;'>⏰ {time}</div>
+                <div style='font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #212529;'>{course_name}</div>
                 
                 <div style='line-height: 2; font-size: 16px;'>
                     <div><span style='color: #6c757d; font-weight: 600;'>📍 教室：</span>{classroom}</div>
-                    <div><span style='color: #6c757d; font-weight: 600;'>⭐ 難易度：</span>LV{row['Difficulty']}</div>
-                    <div><span style='color: #6c757d; font-weight: 600;'>👨‍🏫 講師：</span>{row['Teacher']}</div>
-                    <div><span style='color: #6c757d; font-weight: 600;'>📚 教材：</span>{row['Book']}</div>
+                    <div><span style='color: #6c757d; font-weight: 600;'>⭐ 難易度：</span>LV{difficulty}</div>
+                    <div><span style='color: #6c757d; font-weight: 600;'>👨‍🏫 講師：</span>{teacher}</div>
+                    <div><span style='color: #6c757d; font-weight: 600;'>📚 教材：</span>{book}</div>
                     <div><span style='color: #6c757d; font-weight: 600;'>📝 單元：</span>{unit}</div>
                     <div><span style='color: #6c757d; font-weight: 600;'>📋 課綱：</span>{syllabus_name}</div>
                 </div>
