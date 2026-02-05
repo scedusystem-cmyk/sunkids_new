@@ -508,29 +508,22 @@ else:
             teacher = str(row['Teacher'])
             book = str(row.get('Book', '-'))
             
-            # 課程卡片（全部靠左排列）
-            st.markdown(f"""
-            <div style='
-                background-color: white;
-                border-radius: 8px;
-                padding: 24px;
-                margin-bottom: 20px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                border-left: 8px solid {color};
-            '>
-                <div style='font-size: 20px; font-weight: bold; color: #495057; margin-bottom: 8px;'>⏰ {time}</div>
-                <div style='font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #212529;'>{course_name}</div>
-                
-                <div style='line-height: 2; font-size: 16px;'>
-                    <div><span style='color: #6c757d; font-weight: 600;'>📍 教室：</span>{classroom}</div>
-                    <div><span style='color: #6c757d; font-weight: 600;'>⭐ 難易度：</span>LV{difficulty}</div>
-                    <div><span style='color: #6c757d; font-weight: 600;'>👨‍🏫 講師：</span>{teacher}</div>
-                    <div><span style='color: #6c757d; font-weight: 600;'>📚 教材：</span>{book}</div>
-                    <div><span style='color: #6c757d; font-weight: 600;'>📝 單元：</span>{unit}</div>
-                    <div><span style='color: #6c757d; font-weight: 600;'>📋 課綱：</span>{syllabus_name}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            # 課程卡片（簡化版，避免 HTML 解析問題）
+            card_html = f"""
+<div style='background-color: white; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 8px solid {color};'>
+    <div style='font-size: 20px; font-weight: bold; color: #495057; margin-bottom: 8px;'>時間: {time}</div>
+    <div style='font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #212529;'>{course_name}</div>
+    <div style='line-height: 2; font-size: 16px;'>
+        <div><span style='color: #6c757d; font-weight: 600;'>教室：</span>{classroom}</div>
+        <div><span style='color: #6c757d; font-weight: 600;'>難易度：</span>LV{difficulty}</div>
+        <div><span style='color: #6c757d; font-weight: 600;'>講師：</span>{teacher}</div>
+        <div><span style='color: #6c757d; font-weight: 600;'>教材：</span>{book}</div>
+        <div><span style='color: #6c757d; font-weight: 600;'>單元：</span>{unit}</div>
+        <div><span style='color: #6c757d; font-weight: 600;'>課綱：</span>{syllabus_name}</div>
+    </div>
+</div>
+"""
+            st.markdown(card_html, unsafe_allow_html=True)
 
 # ============================================
 # 底部資訊
