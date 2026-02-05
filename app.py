@@ -503,7 +503,7 @@ else:
             time = str(row['Time'])
             difficulty = str(row['Difficulty'])
             teacher = str(row['Teacher'])
-            book = str(row.get('Book_Full_Name', '-'))
+            book = str(row.get('Book', '-'))
             
             # 課程卡片（全部靠左排列）
             st.markdown(f"""
