@@ -101,6 +101,10 @@ def show_create_courseline_dialog():
         key = f"{row['Teacher_ID']} - {row['Teacher_Name']}"
         teacher_options[key] = row['Teacher_ID']
     
+    # 初始化 session state（必須在 form 外部）
+    if 'time_slots' not in st.session_state:
+        st.session_state.time_slots = [{'weekday': 1, 'time': '19:00'}]
+    
     # 表單
     with st.form("create_courseline_form"):
         # 課程名稱
@@ -144,10 +148,6 @@ def show_create_courseline_dialog():
         # 上課時間（支援多時段）
         st.write("**上課時間 ***")
         st.caption("一個課綱路線可設定多個上課時段（例如：週一19:00 + 週三19:00）")
-        
-        # 初始化 session state
-        if 'time_slots' not in st.session_state:
-            st.session_state.time_slots = [{'weekday': 1, 'time': '19:00'}]
         
         # 顯示所有時段
         time_slots = []
