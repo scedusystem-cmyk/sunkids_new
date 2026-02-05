@@ -124,6 +124,9 @@ def load_schedule_data():
         if 'Book_Full_Name' in df_schedule.columns:
             df_schedule = df_schedule.rename(columns={'Book_Full_Name': 'Book'})
         
+        if 'Chapters' in df_schedule.columns:
+            df_schedule = df_schedule.rename(columns={'Chapters': 'Unit'})
+        
         # 移除重複記錄（根據 Slot_ID 去重）
         if 'Slot_ID' in df_schedule.columns:
             df_schedule = df_schedule.drop_duplicates(subset=['Slot_ID'], keep='first')
