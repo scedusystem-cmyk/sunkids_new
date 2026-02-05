@@ -99,6 +99,19 @@ def load_schedule_data():
             # 如果沒有老師資料，就用 Teacher_ID
             df_schedule['Teacher'] = df_schedule['Teacher_ID']
         
+        # 載入 Config_Syllabus 取得課綱名稱
+        df_syllabus = load_config_syllabus()
+        
+        if df_syllabus is not None and len(df_syllabus) > 0:
+            # 取得唯一的課綱清單（SyllabusID + SyllabusName）
+            syllabus_unique = df_syllabus[['SyllabusID', 'SyllabusName']].drop_duplicates()
+            # 合併課綱名稱
+            df_schedule = df_schedule.merge(
+                syllabus_unique,
+                on='SyllabusID',
+                how='left'
+            )
+        
         # 整理欄位名稱（只 rename 需要改的）
         if 'Book_Full_Name' in df_schedule.columns:
             df_schedule = df_schedule.rename(columns={'Book_Full_Name': 'Book'})
@@ -359,7 +372,8 @@ if view_mode == "月":
                     if len(day_classes) > 0:
                         for _, row in day_classes.iterrows():
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
-                            cards_html += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 6px; margin-bottom: 6px; border-radius: 4px; font-size: 14px; font-weight: 600;'>{row['Time']} {row['CourseName']}</div>"
+                            classroom = row.get('Classroom', '')
+                            cards_html += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 6px; margin-bottom: 6px; border-radius: 4px; font-size: 14px; font-weight: 600;'>{row['Time']} {row['CourseName']} {classroom}</div>"
                     
                     # 完整格子 HTML（固定高度）
                     cell_html = f"<div style='height: 180px; border: 1px solid #dee2e6; padding: 8px; overflow-y: auto;'><div style='font-weight: bold; margin-bottom: 8px; font-size: 16px;'>{day}</div>{cards_html}</div>"
@@ -382,14 +396,29 @@ elif view_mode == "週":
     if len(time_slots) == 0:
         st.info("📭 本週無課程")
     else:
+        # 計算每個時段的最大課程數（用於統一高度）
+        time_slot_max_courses = {}
+        for time_slot in time_slots:
+            max_count = 0
+            for date in week_dates:
+                date_str = date.strftime('%Y-%m-%d')
+                count = len(filtered_df[
+                    (filtered_df['Date'] == date_str) & 
+                    (filtered_df['Time'] == time_slot)
+                ])
+                max_count = max(max_count, count)
+            time_slot_max_courses[time_slot] = max(max_count, 1)  # 至少 1
+        
         # 使用表格樣式
         st.markdown("""
         <style>
         .week-table-cell {
             border: 2px solid #dee2e6;
             padding: 8px;
-            min-height: 100px;
             background-color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -397,19 +426,22 @@ elif view_mode == "週":
         # 建立表頭
         cols_header = st.columns([1] + [3]*7)
         with cols_header[0]:
-            st.markdown("<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 16px;'>時間</div>", unsafe_allow_html=True)
+            st.markdown("<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 16px; min-height: 60px;'>時間</div>", unsafe_allow_html=True)
         for i, date in enumerate(week_dates):
             weekday = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'][date.weekday()]
             with cols_header[i+1]:
-                st.markdown(f"<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 16px;'>{date.month}/{date.day}<br>{weekday}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 16px; min-height: 60px;'>{date.month}/{date.day}<br>{weekday}</div>", unsafe_allow_html=True)
         
         # 建立每個時段的行
         for time_slot in time_slots:
             cols = st.columns([1] + [3]*7)
             
+            # 計算該時段的統一高度
+            cell_height = 80 + (time_slot_max_courses[time_slot] * 110)
+            
             # 時間標籤
             with cols[0]:
-                st.markdown(f"<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 18px;'>{time_slot}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 18px; min-height: {cell_height}px;'>{time_slot}</div>", unsafe_allow_html=True)
             
             # 每一天的課程
             for i, date in enumerate(week_dates):
@@ -421,11 +453,12 @@ elif view_mode == "週":
                 ]
                 
                 with cols[i+1]:
-                    cell_content = "<div class='week-table-cell'>"
+                    cell_content = f"<div class='week-table-cell' style='min-height: {cell_height}px;'>"
                     if len(slot_classes) > 0:
                         for _, row in slot_classes.iterrows():
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
-                            cell_content += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 10px; border-radius: 4px; margin-bottom: 6px; border-left: 4px solid rgba(0,0,0,0.3);'><div style='font-weight: 600; font-size: 15px;'>{row['CourseName']}</div><div style='font-size: 13px; margin-top: 4px;'>{row['Teacher']}</div><div style='font-size: 13px;'>{row['Book']}</div></div>"
+                            classroom = row.get('Classroom', '')
+                            cell_content += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 10px; border-radius: 4px; margin-bottom: 6px; border-left: 4px solid rgba(0,0,0,0.3);'><div style='font-weight: 600; font-size: 15px;'>{row['CourseName']} {classroom}</div><div style='font-size: 13px; margin-top: 4px;'>{row['Teacher']}</div><div style='font-size: 13px;'>{row['Book']}</div></div>"
                     cell_content += "</div>"
                     st.markdown(cell_content, unsafe_allow_html=True)
 
@@ -445,37 +478,35 @@ else:
         for _, row in day_classes.iterrows():
             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
             
-            # 課程卡片
+            # 取得課綱名稱（需要從 Config_Syllabus 讀取）
+            syllabus_name = row.get('SyllabusID', '-')
+            # 如果有 SyllabusName 欄位就用，否則顯示 SyllabusID
+            if 'SyllabusName' in row and pd.notna(row.get('SyllabusName')):
+                syllabus_name = row['SyllabusName']
+            
+            classroom = row.get('Classroom', '-')
+            unit = row.get('Unit', '-')
+            
+            # 課程卡片（全部靠左排列）
             st.markdown(f"""
             <div style='
                 background-color: white;
                 border-radius: 8px;
-                padding: 20px;
+                padding: 24px;
                 margin-bottom: 20px;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 border-left: 8px solid {color};
             '>
-                <div style='display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;'>
-                    <div>
-                        <div style='font-size: 24px; font-weight: bold; margin-bottom: 6px;'>{row['CourseName']}</div>
-                        <div style='color: #6c757d; font-size: 16px;'>難易度 LV{row['Difficulty']}</div>
-                    </div>
-                    <div style='text-align: right;'>
-                        <div style='font-size: 22px; font-weight: bold;'>{row['Time']}</div>
-                    </div>
-                </div>
-                <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; background-color: #f8f9fa; border-radius: 4px;'>
-                    <div>
-                        <div style='font-size: 14px; color: #6c757d; margin-bottom: 6px;'>👨‍🏫 講師</div>
-                        <div style='font-weight: bold; font-size: 16px;'>{row['Teacher']}</div>
-                    </div>
-                    <div>
-                        <div style='font-size: 14px; color: #6c757d; margin-bottom: 6px;'>📚 教材</div>
-                        <div style='font-weight: bold; font-size: 16px;'>{row['Book']}</div>
-                    </div>
-                </div>
-                <div style='margin-top: 16px; padding: 12px; background-color: {color}; border-radius: 4px;'>
-                    <div style='font-size: 14px; color: #000000;'>📝 單元：{row.get('Unit', '-')}</div>
+                <div style='font-size: 20px; font-weight: bold; color: #495057; margin-bottom: 8px;'>⏰ {row['Time']}</div>
+                <div style='font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #212529;'>{row['CourseName']}</div>
+                
+                <div style='line-height: 2; font-size: 16px;'>
+                    <div><span style='color: #6c757d; font-weight: 600;'>📍 教室：</span>{classroom}</div>
+                    <div><span style='color: #6c757d; font-weight: 600;'>⭐ 難易度：</span>LV{row['Difficulty']}</div>
+                    <div><span style='color: #6c757d; font-weight: 600;'>👨‍🏫 講師：</span>{row['Teacher']}</div>
+                    <div><span style='color: #6c757d; font-weight: 600;'>📚 教材：</span>{row['Book']}</div>
+                    <div><span style='color: #6c757d; font-weight: 600;'>📝 單元：</span>{unit}</div>
+                    <div><span style='color: #6c757d; font-weight: 600;'>📋 課綱：</span>{syllabus_name}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
