@@ -124,6 +124,10 @@ def load_schedule_data():
         if 'Book_Full_Name' in df_schedule.columns:
             df_schedule = df_schedule.rename(columns={'Book_Full_Name': 'Book'})
         
+        # 移除重複記錄（根據 Slot_ID 去重）
+        if 'Slot_ID' in df_schedule.columns:
+            df_schedule = df_schedule.drop_duplicates(subset=['Slot_ID'], keep='first')
+        
         # 取得課程清單（用於篩選）
         classes = df_schedule[['CourseLineID', 'CourseName', 'Teacher', 'Difficulty']].drop_duplicates().to_dict('records')
         
