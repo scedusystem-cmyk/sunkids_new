@@ -1,9 +1,9 @@
 """
-Sun Kids æ™ºæ…§æŽ’èª²ç®¡ç†ç³»çµ± (SK-SSS)
-Streamlit Web Application - æ•´åˆ Google Sheets
+Sun Kids Smart Scheduling System (SK-SSS)
+Streamlit Web Application - Google Sheets Integration
 
-ä¸‰ç¨®æª¢è¦–æ¨¡å¼ï¼šæœˆ/é€±/æ—¥
-é›£æ˜“åº¦é¡è‰²ç³»çµ±ï¼šLV1-LV5
+Three View Modes: Month/Week/Day
+Difficulty Color System: LV1-LV5
 """
 
 import streamlit as st
@@ -14,248 +14,251 @@ from config import get_spreadsheet
 from sheets_handler import load_master_schedule, load_config_courseline, load_config_syllabus
 
 # ============================================
-# é é¢è¨­å®š
+# Page Configuration
 # ============================================
 st.set_page_config(
-    page_title="Sun Kids æŽ’èª²ç³»çµ±",
-    page_icon="ðŸ“š",
+    page_title="Sun Kids Scheduling System",
+    page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # ============================================
-# é›£æ˜“åº¦é¡è‰²å®šç¾©
+# Difficulty Color Definition
 # ============================================
 DIFFICULTY_COLORS = {
-    1: "#FFB3BA",  # å«©ç´…ï¼ˆç°¡å–®ï¼‰
-    2: "#FFCC99",  # æ·¡æ©˜
-    3: "#FFFFB3",  # æ·ºé»ƒ
-    4: "#B3FFB3",  # æ·ºç¶ 
-    5: "#B3D9FF",  # æ·ºè—ï¼ˆå›°é›£ï¼‰
+    1: "#FFB3BA",  # Light red (Easy)
+    2: "#FFCC99",  # Light orange
+    3: "#FFFFB3",  # Light yellow
+    4: "#B3FFB3",  # Light green
+    5: "#B3D9FF",  # Light blue (Hard)
 }
 
-# çµ±ä¸€ä½¿ç”¨é»‘è‰²æ–‡å­—
+# Use black text uniformly
 TEXT_COLOR = "#000000"
 
 # ============================================
-# è³‡æ–™è¼‰å…¥
+# Data Loading
 # ============================================
 @st.cache_data(ttl=60)
 def load_schedule_data():
     """
-    å¾ž Google Sheets è¼‰å…¥æŽ’èª²è³‡æ–™
+    Load schedule data from Google Sheets
     """
     try:
-        # æ¸¬è©¦é€£ç·š
+        # Test connection
         spreadsheet = get_spreadsheet()
         if spreadsheet is None:
-            st.error("âŒ ç„¡æ³•é€£æŽ¥åˆ° Google Sheets - Spreadsheet ç‚º None")
-            st.info("è«‹æª¢æŸ¥ï¼š1. Secrets æ˜¯å¦æ­£ç¢ºè¨­å®š 2. Service Account æ˜¯å¦åŠ å…¥å…±ç”¨")
+            st.error("❌ Unable to connect to Google Sheets - Spreadsheet is None")
+            st.info("Please check: 1. Secrets configuration 2. Service Account permissions")
             return pd.DataFrame(), []
         
-        st.success(f"âœ… æˆåŠŸé€£æŽ¥åˆ°: {spreadsheet.title}")
+        st.success(f"✅ Successfully connected to: {spreadsheet.title}")
         
-        # è¼‰å…¥ Master_Schedule
+        # Load Master_Schedule
         df_schedule = load_master_schedule()
         
         if df_schedule is None:
-            st.error("âŒ load_master_schedule() è¿”å›ž None")
+            st.error("❌ load_master_schedule() returned None")
             return pd.DataFrame(), []
         
         if len(df_schedule) == 0:
-            st.warning("âš ï¸ Master_Schedule ç„¡è³‡æ–™ï¼Œè«‹å…ˆæ–°å¢žèª²ç¶±è·¯ç·š")
+            st.warning("⚠️ Master_Schedule has no data, please add course lines first")
             return pd.DataFrame(), []
         
         original_count = len(df_schedule)
-        st.info(f"ðŸ“Š Master_Schedule å…± {original_count} ç­†è³‡æ–™")
+        st.info(f"📊 Master_Schedule total {original_count} records")
         
-        # åŽ»é™¤é‡è¤‡è³‡æ–™ï¼ˆæ ¹æ“š Slot_IDï¼‰
+        # Remove duplicates (based on Slot_ID)
         df_schedule = df_schedule.drop_duplicates(subset=['Slot_ID'], keep='first')
         
         if len(df_schedule) < original_count:
             removed = original_count - len(df_schedule)
-            st.warning(f"âš ï¸ å·²ç§»é™¤ {removed} ç­†é‡è¤‡è³‡æ–™ï¼ˆSlot_ID é‡è¤‡ï¼‰")
+            st.warning(f"⚠️ Removed {removed} duplicate records (Slot_ID duplicates)")
         
-        # ç¢ºä¿æ—¥æœŸæ ¼å¼
+        # Ensure date format
         df_schedule['Date'] = pd.to_datetime(df_schedule['Date'], errors='coerce')
         df_schedule['Date'] = df_schedule['Date'].dt.strftime('%Y-%m-%d')
         
-        # è¼‰å…¥ Config_CourseLine å–å¾—é›£æ˜“åº¦
+        # Load Config_CourseLine to get difficulty
         df_courseline = load_config_courseline()
         
         if df_courseline is not None and len(df_courseline) > 0:
-            # å¾ž Level_ID æå–é›£æ˜“åº¦
+            # Extract difficulty from Level_ID
             df_schedule['Difficulty'] = df_schedule['Level_ID'].str.extract(r'(\d+)').astype(int)
         else:
-            # é è¨­é›£æ˜“åº¦
+            # Default difficulty
             df_schedule['Difficulty'] = 3
         
-        # è¼‰å…¥ Config_Teacher å–å¾—è€å¸«åå­—
+        # Load Config_Teacher to get teacher names
         from sheets_handler import load_config_teacher
         df_teacher = load_config_teacher()
         
         if df_teacher is not None and len(df_teacher) > 0:
-            # åˆä½µè€å¸«åå­—
+            # Merge teacher names
             df_schedule = df_schedule.merge(
                 df_teacher[['Teacher_ID', 'Teacher_Name']], 
                 on='Teacher_ID', 
                 how='left'
             )
-            # å¦‚æžœæœ‰ Teacher_Name å°±ç”¨ï¼Œæ²’æœ‰å°±ç”¨ Teacher_ID
+            # Use Teacher_Name if available, otherwise use Teacher_ID
             df_schedule['Teacher'] = df_schedule['Teacher_Name'].fillna(df_schedule['Teacher_ID'])
         else:
-            # å¦‚æžœæ²’æœ‰è€å¸«è³‡æ–™ï¼Œå°±ç”¨ Teacher_ID
+            # If no teacher data, use Teacher_ID
             df_schedule['Teacher'] = df_schedule['Teacher_ID']
         
-        # è¼‰å…¥ Config_Syllabus å–å¾—èª²ç¶±åç¨±
+        # Load Config_Syllabus to get syllabus names
         df_syllabus = load_config_syllabus()
         
         if df_syllabus is not None and len(df_syllabus) > 0:
-            # å–å¾—å”¯ä¸€çš„èª²ç¶±æ¸…å–®ï¼ˆSyllabusID + SyllabusNameï¼‰
+            # Get unique syllabus list (SyllabusID + SyllabusName)
             syllabus_unique = df_syllabus[['SyllabusID', 'SyllabusName']].drop_duplicates()
-            # åˆä½µèª²ç¶±åç¨±
+            # Merge syllabus names
             df_schedule = df_schedule.merge(
                 syllabus_unique,
                 on='SyllabusID',
                 how='left'
             )
         
-        # æ•´ç†æ¬„ä½åç¨±ï¼ˆåª rename éœ€è¦æ”¹çš„ï¼‰
+        # Organize column names (only rename what needs to be changed)
         if 'Book_Full_Name' in df_schedule.columns:
             df_schedule = df_schedule.rename(columns={'Book_Full_Name': 'Book'})
         
-        # ç§»é™¤é‡è¤‡è¨˜éŒ„ï¼ˆæ ¹æ“š Slot_ID åŽ»é‡ï¼‰
+        if 'Chapters' in df_schedule.columns:
+            df_schedule = df_schedule.rename(columns={'Chapters': 'Unit'})
+        
+        # Remove duplicate records (deduplicate by Slot_ID)
         if 'Slot_ID' in df_schedule.columns:
             df_schedule = df_schedule.drop_duplicates(subset=['Slot_ID'], keep='first')
         
-        # å–å¾—èª²ç¨‹æ¸…å–®ï¼ˆç”¨æ–¼ç¯©é¸ï¼‰
+        # Get course list (for filtering)
         classes = df_schedule[['CourseLineID', 'CourseName', 'Teacher', 'Difficulty']].drop_duplicates().to_dict('records')
         
         return df_schedule, classes
     
     except Exception as e:
-        st.error(f"âŒ è¼‰å…¥è³‡æ–™å¤±æ•—: {str(e)}")
-        st.error(f"éŒ¯èª¤é¡žåž‹: {type(e).__name__}")
+        st.error(f"❌ Failed to load data: {str(e)}")
+        st.error(f"Error type: {type(e).__name__}")
         import traceback
         st.code(traceback.format_exc())
         return pd.DataFrame(), []
 
 # ============================================
-# è¼”åŠ©å‡½æ•¸
+# Helper Functions
 # ============================================
 def get_month_calendar(year, month):
-    """å–å¾—æŒ‡å®šæœˆä»½çš„æ—¥æ›†çŸ©é™£ï¼ˆ6é€±x7å¤©ï¼‰"""
+    """Get calendar matrix for specified month (6 weeks x 7 days)"""
     cal = calendar.monthcalendar(year, month)
-    # è£œé½Šåˆ° 6 é€±
+    # Pad to 6 weeks
     while len(cal) < 6:
         cal.append([0] * 7)
     return cal
 
 # ============================================
-# å´é‚Šæ¬„
+# Sidebar
 # ============================================
-st.sidebar.title("ðŸ“š Sun Kids æŽ’èª²ç³»çµ±")
+st.sidebar.title("📚 Sun Kids Scheduling System")
 st.sidebar.markdown("---")
 
-# ç™»å…¥è³‡è¨Š
-st.sidebar.info("ðŸ‘¤ ç™»å…¥èº«åˆ†ï¼šæ•™å‹™é•·")
+# Login info
+st.sidebar.info("👤 Login: Academic Director")
 st.sidebar.markdown("---")
 
-# æª¢è¦–æ¨¡å¼åˆ‡æ›
+# View mode switch
 view_mode = st.sidebar.radio(
-    "ðŸ“… æª¢è¦–æ¨¡å¼",
-    ["æœˆ", "é€±", "æ—¥"],
+    "📅 View Mode",
+    ["Month", "Week", "Day"],
     horizontal=True
 )
 
-# æ—¥æœŸé¸æ“‡
-st.sidebar.subheader("ðŸ—“ï¸ æ—¥æœŸé¸æ“‡")
+# Date selection
+st.sidebar.subheader("🗓️ Date Selection")
 
-# åˆå§‹åŒ– session state
+# Initialize session state
 if 'current_date' not in st.session_state:
     st.session_state.current_date = datetime.now()
 
-# æ—¥æœŸé¸æ“‡å™¨ï¼ˆä½¿ç”¨ on_change å›žèª¿ï¼‰
+# Date picker (with on_change callback)
 def on_date_change():
     selected = st.session_state.date_picker
     st.session_state.current_date = datetime.combine(selected, datetime.min.time())
 
 selected_date = st.sidebar.date_input(
-    "é¸æ“‡æ—¥æœŸ",
+    "Select Date",
     value=st.session_state.current_date.date(),
     key="date_picker",
     on_change=on_date_change
 )
 
-# è¼‰å…¥è³‡æ–™
+# Load data
 df_schedule, classes = load_schedule_data()
 
-# ç¯©é¸æ¢ä»¶
+# Filter conditions
 st.sidebar.markdown("---")
-st.sidebar.subheader("ðŸ” ç¯©é¸æ¢ä»¶")
+st.sidebar.subheader("🔍 Filter Conditions")
 
-# èª²ç¨‹ç¯©é¸
-class_options = ['å…¨éƒ¨'] + sorted(list(set([c['CourseName'] for c in classes])))
-selected_class = st.sidebar.selectbox("èª²ç¨‹", class_options)
+# Course filter
+class_options = ['All'] + sorted(list(set([c['CourseName'] for c in classes])))
+selected_class = st.sidebar.selectbox("Course", class_options)
 
-# è€å¸«ç¯©é¸
-teacher_options = ['å…¨éƒ¨'] + sorted(list(set([c['Teacher'] for c in classes])))
-selected_teacher = st.sidebar.selectbox("è¬›å¸«", teacher_options)
+# Teacher filter
+teacher_options = ['All'] + sorted(list(set([c['Teacher'] for c in classes])))
+selected_teacher = st.sidebar.selectbox("Teacher", teacher_options)
 
-# é›£æ˜“åº¦ç¯©é¸
-difficulty_options = ['å…¨éƒ¨'] + [f'LV{i}' for i in range(1, 6)]
-selected_difficulty = st.sidebar.selectbox("é›£æ˜“åº¦", difficulty_options)
+# Difficulty filter
+difficulty_options = ['All'] + [f'LV{i}' for i in range(1, 6)]
+selected_difficulty = st.sidebar.selectbox("Difficulty", difficulty_options)
 
 st.sidebar.markdown("---")
 
-# å¿«é€Ÿæ“ä½œæŒ‰éˆ•
-st.sidebar.subheader("âš¡ å¿«é€Ÿæ“ä½œ")
+# Quick operations
+st.sidebar.subheader("⚡ Quick Operations")
 
-# æ–°å¢žèª²ç¶±è·¯ç·šæŒ‰éˆ•
-if st.sidebar.button("âž• æ–°å¢žèª²ç¶±è·¯ç·š", use_container_width=True, type="primary"):
+# Add course line button
+if st.sidebar.button("➕ Add Course Line", use_container_width=True, type="primary"):
     st.session_state.show_create_dialog = True
 
-# åŒæ­¥ç­ç´šè³‡æ–™æŒ‰éˆ•ï¼ˆèˆŠåŠŸèƒ½ï¼Œä¿ç•™ä½†æ”¹ç‚ºæ¬¡è¦ï¼‰
-if st.sidebar.button("ðŸ”„ åŒæ­¥æ‰€æœ‰èª²ç¶±è·¯ç·š", use_container_width=True):
-    with st.spinner("æ­£åœ¨ç”¢ç”ŸæŽ’ç¨‹..."):
+# Sync class data button (legacy feature, keep but make secondary)
+if st.sidebar.button("🔄 Sync All Course Lines", use_container_width=True):
+    with st.spinner("Generating schedule..."):
         from schedule_generator import generate_all_schedules
         from sheets_handler import write_master_schedule, clear_cache
         
-        # è¼‰å…¥è¨­å®šæª”
+        # Load config files
         df_courseline = load_config_courseline()
         df_syllabus = load_config_syllabus()
         
         if df_courseline is None or df_syllabus is None:
-            st.sidebar.error("âŒ ç„¡æ³•è¼‰å…¥è¨­å®šæª”")
+            st.sidebar.error("❌ Unable to load config files")
         elif len(df_courseline) == 0:
-            st.sidebar.warning("âš ï¸ Config_CourseLine ç„¡è³‡æ–™ï¼Œè«‹å…ˆæ–°å¢žèª²ç¶±è·¯ç·š")
+            st.sidebar.warning("⚠️ Config_CourseLine has no data, please add course lines first")
         elif len(df_syllabus) == 0:
-            st.sidebar.warning("âš ï¸ Config_Syllabus ç„¡è³‡æ–™")
+            st.sidebar.warning("⚠️ Config_Syllabus has no data")
         else:
-            # ç”¢ç”ŸæŽ’ç¨‹
+            # Generate schedule
             schedule = generate_all_schedules(df_courseline, df_syllabus, weeks=12)
             
             if len(schedule) == 0:
-                st.sidebar.warning("âš ï¸ ç„¡æ³•ç”¢ç”ŸæŽ’ç¨‹ï¼Œè«‹æª¢æŸ¥è¨­å®š")
+                st.sidebar.warning("⚠️ Unable to generate schedule, please check settings")
             else:
-                # å¯«å…¥ Google Sheets
+                # Write to Google Sheets
                 success = write_master_schedule(schedule)
                 
                 if success:
-                    st.sidebar.success(f"âœ… æˆåŠŸç”¢ç”Ÿ {len(schedule)} ç­†èª²ç¨‹è¨˜éŒ„")
-                    # æ¸…é™¤å¿«å–ï¼Œé‡æ–°è¼‰å…¥
+                    st.sidebar.success(f"✅ Successfully generated {len(schedule)} course records")
+                    # Clear cache and reload
                     clear_cache()
                     st.rerun()
 
-if st.sidebar.button("ðŸ”„ é‡æ–°è¼‰å…¥è³‡æ–™", use_container_width=True):
+if st.sidebar.button("🔄 Reload Data", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
 
-# é¡¯ç¤ºæ–°å¢žèª²ç¶±è·¯ç·šå°è©±æ¡†
+# Display create course line dialog
 if st.session_state.get('show_create_dialog', False):
     from ui_create_courseline import show_create_courseline_dialog
     
-    # ä½¿ç”¨å½ˆå‡ºå¼å®¹å™¨
+    # Use popup container
     with st.container():
         st.markdown("---")
         show_create_courseline_dialog()
@@ -263,43 +266,43 @@ if st.session_state.get('show_create_dialog', False):
         
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
-            if st.button("âŒ å–æ¶ˆ", use_container_width=True):
+            if st.button("❌ Cancel", use_container_width=True):
                 st.session_state.show_create_dialog = False
                 st.rerun()
 
 st.sidebar.markdown("---")
 
 # ============================================
-# å¥—ç”¨ç¯©é¸
+# Apply Filters
 # ============================================
 filtered_df = df_schedule.copy()
 
-if selected_class != 'å…¨éƒ¨':
+if selected_class != 'All':
     filtered_df = filtered_df[filtered_df['CourseName'] == selected_class]
 
-if selected_teacher != 'å…¨éƒ¨':
+if selected_teacher != 'All':
     filtered_df = filtered_df[filtered_df['Teacher'] == selected_teacher]
 
-if selected_difficulty != 'å…¨éƒ¨':
+if selected_difficulty != 'All':
     difficulty_level = int(selected_difficulty.replace('LV', ''))
     filtered_df = filtered_df[filtered_df['Difficulty'] == difficulty_level]
 
 # ============================================
-# ä¸»ç•«é¢
+# Main Display
 # ============================================
 
-# å¦‚æžœæ²’æœ‰è³‡æ–™ï¼Œé¡¯ç¤ºæç¤ºè¨Šæ¯
+# If no data, show prompt
 if df_schedule.empty:
-    st.info("ðŸ“­ ç›®å‰æ²’æœ‰èª²ç¨‹è³‡æ–™ï¼Œè«‹é»žæ“Šå·¦å´ã€Œâž• æ–°å¢žèª²ç¶±è·¯ç·šã€é–‹å§‹æŽ’èª²")
+    st.info("🔭 Currently no course data, please click '➕ Add Course Line' on the left to start scheduling")
     st.stop()
 
-# æ¨™é¡Œåˆ—
+# Title row
 col_title1, col_title2, col_title3 = st.columns([1, 2, 1])
 
 with col_title1:
-    if st.button("â—€", key="prev_date"):
-        if view_mode == "æœˆ":
-            # ä¸Šå€‹æœˆ
+    if st.button("◀", key="prev_date"):
+        if view_mode == "Month":
+            # Previous month
             if st.session_state.current_date.month == 1:
                 st.session_state.current_date = st.session_state.current_date.replace(
                     year=st.session_state.current_date.year - 1, 
@@ -311,29 +314,30 @@ with col_title1:
                     month=st.session_state.current_date.month - 1, 
                     day=1
                 )
-        elif view_mode == "é€±":
-            # ä¸Šé€±
+        elif view_mode == "Week":
+            # Previous week
             st.session_state.current_date = st.session_state.current_date - timedelta(days=7)
         else:
-            # æ˜¨å¤©
+            # Yesterday
             st.session_state.current_date = st.session_state.current_date - timedelta(days=1)
         st.rerun()
 
 with col_title2:
     current_date = st.session_state.current_date
-    if view_mode == "æœˆ":
-        st.title(f"ðŸ“… {current_date.year}å¹´{current_date.month}æœˆ")
-    elif view_mode == "é€±":
+    if view_mode == "Month":
+        st.title(f"📅 {current_date.year}-{current_date.month:02d}")
+    elif view_mode == "Week":
         week_start = current_date - timedelta(days=current_date.weekday())
         week_end = week_start + timedelta(days=6)
-        st.title(f"ðŸ“… {week_start.strftime('%Y/%m/%d')} - {week_end.strftime('%m/%d')}")
+        st.title(f"📅 {week_start.strftime('%Y/%m/%d')} - {week_end.strftime('%m/%d')}")
     else:
-        st.title(f"ðŸ“… {current_date.strftime('%Yå¹´%mæœˆ%dæ—¥')} ({['é€±ä¸€','é€±äºŒ','é€±ä¸‰','é€±å››','é€±äº”','é€±å…­','é€±æ—¥'][current_date.weekday()]})")
+        weekday_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+        st.title(f"📅 {current_date.strftime('%Y-%m-%d')} ({weekday_names[current_date.weekday()]})")
 
 with col_title3:
-    if st.button("â–¶", key="next_date"):
-        if view_mode == "æœˆ":
-            # ä¸‹å€‹æœˆ
+    if st.button("▶", key="next_date"):
+        if view_mode == "Month":
+            # Next month
             if st.session_state.current_date.month == 12:
                 st.session_state.current_date = st.session_state.current_date.replace(
                     year=st.session_state.current_date.year + 1, 
@@ -345,27 +349,27 @@ with col_title3:
                     month=st.session_state.current_date.month + 1, 
                     day=1
                 )
-        elif view_mode == "é€±":
-            # ä¸‹é€±
+        elif view_mode == "Week":
+            # Next week
             st.session_state.current_date = st.session_state.current_date + timedelta(days=7)
         else:
-            # æ˜Žå¤©
+            # Tomorrow
             st.session_state.current_date = st.session_state.current_date + timedelta(days=1)
         st.rerun()
 
 st.markdown("---")
 
 # ============================================
-# æœˆæª¢è¦–
+# Month View
 # ============================================
-if view_mode == "æœˆ":
-    st.caption("ðŸ’¡ æœˆæ¨¡å¼ï¼šé¡¯ç¤ºä¸»èª²ç¨‹åç¨± + é›£æ˜“åº¦é¡è‰²")
+if view_mode == "Month":
+    st.caption("💡 Month mode: Display main course name + difficulty color")
     
     current_date = st.session_state.current_date
     cal = get_month_calendar(current_date.year, current_date.month)
     
     header_cols = st.columns(7)
-    weekdays = ['é€±ä¸€', 'é€±äºŒ', 'é€±ä¸‰', 'é€±å››', 'é€±äº”', 'é€±å…­', 'é€±æ—¥']
+    weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     for i, col in enumerate(header_cols):
         col.markdown(f"<div style='text-align: center; font-weight: bold; padding: 10px;'>{weekdays[i]}</div>", unsafe_allow_html=True)
     
@@ -379,7 +383,7 @@ if view_mode == "æœˆ":
                     date_str = f"{current_date.year}-{current_date.month:02d}-{day:02d}"
                     day_classes = filtered_df[filtered_df['Date'] == date_str]
                     
-                    # å»ºç«‹æ ¼å­å…§å®¹
+                    # Build cell content
                     cards_html = ""
                     if len(day_classes) > 0:
                         for _, row in day_classes.iterrows():
@@ -387,28 +391,28 @@ if view_mode == "æœˆ":
                             classroom = row.get('Classroom', '')
                             cards_html += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 6px; margin-bottom: 6px; border-radius: 4px; font-size: 14px; font-weight: 600;'>{row['Time']} {row['CourseName']} {classroom}</div>"
                     
-                    # å®Œæ•´æ ¼å­ HTMLï¼ˆå›ºå®šé«˜åº¦ï¼‰
+                    # Complete cell HTML (fixed height)
                     cell_html = f"<div style='height: 180px; border: 1px solid #dee2e6; padding: 8px; overflow-y: auto;'><div style='font-weight: bold; margin-bottom: 8px; font-size: 16px;'>{day}</div>{cards_html}</div>"
                     st.markdown(cell_html, unsafe_allow_html=True)
 
 # ============================================
-# é€±æª¢è¦–
+# Week View
 # ============================================
-elif view_mode == "é€±":
-    st.caption("ðŸ’¡ é€±æ¨¡å¼ï¼šé¡¯ç¤ºèª²ç¨‹åç¨± + é›£æ˜“åº¦é¡è‰² + è€å¸«åç¨±")
+elif view_mode == "Week":
+    st.caption("💡 Week mode: Display course name + difficulty color + teacher name")
     
     current_date = st.session_state.current_date
     week_start = current_date - timedelta(days=current_date.weekday())
     week_dates = [week_start + timedelta(days=i) for i in range(7)]
     
-    # å¾žè³‡æ–™ä¸­å–å¾—æœ‰èª²ç¨‹çš„æ™‚æ®µ
+    # Get time slots with courses from data
     all_times = filtered_df['Time'].unique()
     time_slots = sorted([t for t in all_times if pd.notna(t)])
     
     if len(time_slots) == 0:
-        st.info("ðŸ“­ æœ¬é€±ç„¡èª²ç¨‹")
+        st.info("📭 No courses this week")
     else:
-        # è¨ˆç®—æ¯å€‹æ™‚æ®µçš„æœ€å¤§èª²ç¨‹æ•¸ï¼ˆç”¨æ–¼çµ±ä¸€é«˜åº¦ï¼‰
+        # Calculate max courses per time slot (for uniform height)
         time_slot_max_courses = {}
         for time_slot in time_slots:
             max_count = 0
@@ -419,9 +423,9 @@ elif view_mode == "é€±":
                     (filtered_df['Time'] == time_slot)
                 ])
                 max_count = max(max_count, count)
-            time_slot_max_courses[time_slot] = max(max_count, 1)  # è‡³å°‘ 1
+            time_slot_max_courses[time_slot] = max(max_count, 1)  # At least 1
         
-        # ä½¿ç”¨è¡¨æ ¼æ¨£å¼
+        # Use table style
         st.markdown("""
         <style>
         .week-table-cell {
@@ -435,27 +439,27 @@ elif view_mode == "é€±":
         </style>
         """, unsafe_allow_html=True)
         
-        # å»ºç«‹è¡¨é ­
+        # Build table header
         cols_header = st.columns([1] + [3]*7)
         with cols_header[0]:
-            st.markdown("<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 16px; min-height: 60px;'>æ™‚é–“</div>", unsafe_allow_html=True)
+            st.markdown("<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 16px; min-height: 60px;'>Time</div>", unsafe_allow_html=True)
         for i, date in enumerate(week_dates):
-            weekday = ['é€±ä¸€', 'é€±äºŒ', 'é€±ä¸‰', 'é€±å››', 'é€±äº”', 'é€±å…­', 'é€±æ—¥'][date.weekday()]
+            weekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday()]
             with cols_header[i+1]:
                 st.markdown(f"<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 16px; min-height: 60px;'>{date.month}/{date.day}<br>{weekday}</div>", unsafe_allow_html=True)
         
-        # å»ºç«‹æ¯å€‹æ™‚æ®µçš„è¡Œ
+        # Build row for each time slot
         for time_slot in time_slots:
             cols = st.columns([1] + [3]*7)
             
-            # è¨ˆç®—è©²æ™‚æ®µçš„çµ±ä¸€é«˜åº¦
+            # Calculate uniform height for this time slot
             cell_height = 80 + (time_slot_max_courses[time_slot] * 110)
             
-            # æ™‚é–“æ¨™ç±¤
+            # Time label
             with cols[0]:
                 st.markdown(f"<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 18px; min-height: {cell_height}px;'>{time_slot}</div>", unsafe_allow_html=True)
             
-            # æ¯ä¸€å¤©çš„èª²ç¨‹
+            # Courses for each day
             for i, date in enumerate(week_dates):
                 date_str = date.strftime('%Y-%m-%d')
                 
@@ -475,22 +479,22 @@ elif view_mode == "é€±":
                     st.markdown(cell_content, unsafe_allow_html=True)
 
 # ============================================
-# æ—¥æª¢è¦–
+# Day View
 # ============================================
 else:
-    st.caption("ðŸ’¡ æ—¥æ¨¡å¼ï¼šé¡¯ç¤ºå®Œæ•´èª²ç¨‹è³‡è¨Š")
+    st.caption("💡 Day mode: Display complete course information")
     
     current_date = st.session_state.current_date
     date_str = current_date.strftime('%Y-%m-%d')
     day_classes = filtered_df[filtered_df['Date'] == date_str].sort_values('Time')
     
     if len(day_classes) == 0:
-        st.info("ðŸ“­ ä»Šæ—¥ç„¡èª²ç¨‹")
+        st.info("📭 No courses today")
     else:
         for _, row in day_classes.iterrows():
             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
             
-            # å®‰å…¨å–å¾—èª²ç¶±åç¨±
+            # Safely get syllabus name
             syllabus_name = '-'
             if 'SyllabusName' in row.index and pd.notna(row['SyllabusName']):
                 syllabus_name = str(row['SyllabusName'])
@@ -505,32 +509,25 @@ else:
             teacher = str(row['Teacher'])
             book = str(row.get('Book', '-'))
             
-            # èª²ç¨‹å¡ç‰‡ï¼ˆå…¨éƒ¨é å·¦æŽ’åˆ—ï¼‰
-            st.markdown(f"""
-            <div style='
-                background-color: white;
-                border-radius: 8px;
-                padding: 24px;
-                margin-bottom: 20px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                border-left: 8px solid {color};
-            '>
-                <div style='font-size: 20px; font-weight: bold; color: #495057; margin-bottom: 8px;'>â° {time}</div>
-                <div style='font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #212529;'>{course_name}</div>
-                
-                <div style='line-height: 2; font-size: 16px;'>
-                    <div><span style='color: #6c757d; font-weight: 600;'>ðŸ“ æ•™å®¤ï¼š</span>{classroom}</div>
-                    <div><span style='color: #6c757d; font-weight: 600;'>â­ é›£æ˜“åº¦ï¼š</span>LV{difficulty}</div>
-                    <div><span style='color: #6c757d; font-weight: 600;'>ðŸ‘¨â€ðŸ« è¬›å¸«ï¼š</span>{teacher}</div>
-                    <div><span style='color: #6c757d; font-weight: 600;'>ðŸ“š æ•™æï¼š</span>{book}</div>
-                    <div><span style='color: #6c757d; font-weight: 600;'>ðŸ“ å–®å…ƒï¼š</span>{unit}</div>
-                    <div><span style='color: #6c757d; font-weight: 600;'>ðŸ“‹ èª²ç¶±ï¼š</span>{syllabus_name}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            # Course card (simplified, no emojis)
+            card_html = f"""
+<div style='background-color: white; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 8px solid {color};'>
+    <div style='font-size: 20px; font-weight: bold; color: #495057; margin-bottom: 8px;'>Time: {time}</div>
+    <div style='font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #212529;'>{course_name}</div>
+    <div style='line-height: 2; font-size: 16px;'>
+        <div><span style='color: #6c757d; font-weight: 600;'>Classroom:</span> {classroom}</div>
+        <div><span style='color: #6c757d; font-weight: 600;'>Difficulty:</span> LV{difficulty}</div>
+        <div><span style='color: #6c757d; font-weight: 600;'>Teacher:</span> {teacher}</div>
+        <div><span style='color: #6c757d; font-weight: 600;'>Book:</span> {book}</div>
+        <div><span style='color: #6c757d; font-weight: 600;'>Unit:</span> {unit}</div>
+        <div><span style='color: #6c757d; font-weight: 600;'>Syllabus:</span> {syllabus_name}</div>
+    </div>
+</div>
+"""
+            st.markdown(card_html, unsafe_allow_html=True)
 
 # ============================================
-# åº•éƒ¨è³‡è¨Š
+# Footer Information
 # ============================================
 st.markdown("---")
-st.caption("ðŸ”§ Sun Kids æ™ºæ…§æŽ’èª²ç®¡ç†ç³»çµ± v1.0 | é€£æŽ¥ Google Sheets")
+st.caption("🔧 Sun Kids Smart Scheduling System v1.0 | Connected to Google Sheets")
