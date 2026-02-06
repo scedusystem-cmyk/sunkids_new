@@ -425,33 +425,33 @@ if view_mode == "Month":
                     date_str = f"{current_date.year}-{current_date.month:02d}-{day:02d}"
                     day_classes = filtered_df[filtered_df['Date'] == date_str]
                     
-                    # Container with border
-                    cell_html = f"<div style='border: 1px solid #dee2e6; padding: 8px; min-height: 180px;'>"
+                    # Build complete cell HTML
+                    cell_html = f"<div style='border: 1px solid #dee2e6; padding: 8px; min-height: 180px; overflow-y: auto;'>"
                     cell_html += f"<div style='font-weight: bold; font-size: 16px; margin-bottom: 8px;'>{day}</div>"
-                    st.markdown(cell_html, unsafe_allow_html=True)
                     
-                    # Display courses with click button integrated
                     if len(day_classes) > 0:
                         for idx, row in day_classes.iterrows():
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
                             classroom = row.get('Classroom', '')
-                            button_label = f"{row['Time']} {row['CourseName']} {classroom}"
                             button_key = f"m_{date_str}_{idx}"
+                            course_text = f"{row['Time']} {row['CourseName']} {classroom}"
                             
-                            # Create container with color and small button
-                            col_card, col_btn = st.columns([5, 1])
-                            with col_card:
-                                st.markdown(f"""
-                                <div style='background-color: {color}; color: {TEXT_COLOR}; padding: 6px; border-radius: 4px; font-size: 13px; font-weight: 600;'>
-                                    {button_label}
-                                </div>
-                                """, unsafe_allow_html=True)
-                            with col_btn:
-                                if st.button("📋", key=button_key, help="Details"):
-                                    show_course_dialog(row.to_dict())
+                            # Course card with inline button
+                            cell_html += f"""
+                            <div style='background-color: {color}; color: {TEXT_COLOR}; padding: 6px; margin-bottom: 6px; border-radius: 4px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;'>
+                                <span>{course_text}</span>
+                            </div>
+                            """
                     
-                    # Close cell div
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    cell_html += "</div>"
+                    st.markdown(cell_html, unsafe_allow_html=True)
+                    
+                    # Buttons below (outside the visual cell but in same column)
+                    if len(day_classes) > 0:
+                        for idx, row in day_classes.iterrows():
+                            button_key = f"m_{date_str}_{idx}"
+                            if st.button("📋", key=button_key, help="Details", use_container_width=True):
+                                show_course_dialog(row.to_dict())
 
 # ============================================
 # Week View
@@ -497,30 +497,30 @@ elif view_mode == "Week":
                 ]
                 
                 with cols[i+1]:
-                    # Cell with border
-                    st.markdown("<div style='border: 1px solid #dee2e6; padding: 8px; min-height: 100px;'>", unsafe_allow_html=True)
+                    # Build complete cell HTML
+                    cell_html = f"<div style='border: 1px solid #dee2e6; padding: 8px; min-height: 100px;'>"
                     
                     if len(slot_classes) > 0:
                         for idx, row in slot_classes.iterrows():
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
                             classroom = row.get('Classroom', '')
-                            button_key = f"w_{date_str}_{time_slot}_{idx}"
                             
-                            # Create container with color and small button
-                            col_card, col_btn = st.columns([5, 1])
-                            with col_card:
-                                st.markdown(f"""
-                                <div style='background-color: {color}; color: {TEXT_COLOR}; padding: 8px; border-radius: 4px; border-left: 4px solid rgba(0,0,0,0.3); font-size: 13px;'>
-                                    <div style='font-weight: 600;'>{row['CourseName']} {classroom}</div>
-                                    <div style='font-size: 11px; margin-top: 2px;'>{row['Teacher']}</div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                            with col_btn:
-                                if st.button("📋", key=button_key, help="Details"):
-                                    show_course_dialog(row.to_dict())
+                            cell_html += f"""
+                            <div style='background-color: {color}; color: {TEXT_COLOR}; padding: 8px; margin-bottom: 6px; border-radius: 4px; border-left: 4px solid rgba(0,0,0,0.3);'>
+                                <div style='font-weight: 600; font-size: 13px;'>{row['CourseName']} {classroom}</div>
+                                <div style='font-size: 11px; margin-top: 2px;'>{row['Teacher']}</div>
+                            </div>
+                            """
                     
-                    # Close cell div
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    cell_html += "</div>"
+                    st.markdown(cell_html, unsafe_allow_html=True)
+                    
+                    # Buttons below (outside visual cell)
+                    if len(slot_classes) > 0:
+                        for idx, row in slot_classes.iterrows():
+                            button_key = f"w_{date_str}_{time_slot}_{idx}"
+                            if st.button("📋", key=button_key, help="Details", use_container_width=True):
+                                show_course_dialog(row.to_dict())
 
 # ============================================
 # Day View
