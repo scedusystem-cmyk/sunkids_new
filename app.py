@@ -360,85 +360,33 @@ with col_title3:
 st.markdown("---")
 
 # ============================================
-# Month View
+# Course Detail Dialog
 # ============================================
-if view_mode == "Month":
-    st.caption("💡 Month mode: Display with difficulty colors")
+@st.dialog("Course Details", width="large")
+def show_course_dialog(course):
+    """Display course details in a dialog"""
+    color = DIFFICULTY_COLORS.get(course.get('Difficulty', 3), "#CCCCCC")
     
-    current_date = st.session_state.current_date
-    cal = get_month_calendar(current_date.year, current_date.month)
+    # Safely get syllabus name
+    syllabus_name = '-'
+    if 'SyllabusName' in course and pd.notna(course.get('SyllabusName')):
+        syllabus_name = str(course['SyllabusName'])
+    elif 'SyllabusID' in course and pd.notna(course.get('SyllabusID')):
+        syllabus_name = str(course['SyllabusID'])
     
-    header_cols = st.columns(7)
-    weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    for i, col in enumerate(header_cols):
-        col.markdown(f"<div style='text-align: center; font-weight: bold; padding: 10px;'>{weekdays[i]}</div>", unsafe_allow_html=True)
+    classroom = str(course.get('Classroom', '-'))
+    unit = str(course.get('Unit', '-'))
+    course_name = str(course.get('CourseName', '-'))
+    time = str(course.get('Time', '-'))
+    difficulty = str(course.get('Difficulty', '-'))
+    teacher = str(course.get('Teacher', '-'))
+    book = str(course.get('Book', '-'))
+    date = str(course.get('Date', '-'))
+    weekday = str(course.get('Weekday', '-'))
     
-    # Collect all courses in current month for selection
-    month_courses = []
-    
-    for week in cal:
-        cols = st.columns(7)
-        for i, day in enumerate(week):
-            with cols[i]:
-                if day == 0:
-                    st.markdown("<div style='height: 180px; background-color: #f8f9fa; border: 1px solid #dee2e6;'></div>", unsafe_allow_html=True)
-                else:
-                    date_str = f"{current_date.year}-{current_date.month:02d}-{day:02d}"
-                    day_classes = filtered_df[filtered_df['Date'] == date_str]
-                    
-                    # Build cell HTML with colors
-                    cards_html = ""
-                    if len(day_classes) > 0:
-                        for idx, row in day_classes.iterrows():
-                            color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
-                            classroom = row.get('Classroom', '')
-                            cards_html += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 6px; margin-bottom: 6px; border-radius: 4px; font-size: 14px; font-weight: 600;'>{row['Time']} {row['CourseName']} {classroom}</div>"
-                            # Add to selection list
-                            month_courses.append((f"{date_str} {row['Time']} - {row['CourseName']} {classroom}", row.to_dict()))
-                    
-                    # Complete cell HTML
-                    cell_html = f"<div style='height: 180px; border: 1px solid #dee2e6; padding: 8px; overflow-y: auto;'><div style='font-weight: bold; margin-bottom: 8px; font-size: 16px;'>{day}</div>{cards_html}</div>"
-                    st.markdown(cell_html, unsafe_allow_html=True)
-    
-    # Course selection below calendar
-    if len(month_courses) > 0:
-        st.markdown("---")
-        st.subheader("📋 View Course Details")
-        course_options = ['Select a course...'] + [c[0] for c in month_courses]
-        
-        selected_idx = st.selectbox(
-            "Choose course:",
-            range(len(course_options)),
-            format_func=lambda x: course_options[x],
-            key="month_course_selector"
-        )
-        
-        if selected_idx > 0:
-            selected_course = month_courses[selected_idx - 1][1]
-            
-            # Display course details
-            color = DIFFICULTY_COLORS.get(selected_course.get('Difficulty', 3), "#CCCCCC")
-            
-            # Safely get syllabus name
-            syllabus_name = '-'
-            if 'SyllabusName' in selected_course and pd.notna(selected_course.get('SyllabusName')):
-                syllabus_name = str(selected_course['SyllabusName'])
-            elif 'SyllabusID' in selected_course and pd.notna(selected_course.get('SyllabusID')):
-                syllabus_name = str(selected_course['SyllabusID'])
-            
-            classroom = str(selected_course.get('Classroom', '-'))
-            unit = str(selected_course.get('Unit', '-'))
-            course_name = str(selected_course.get('CourseName', '-'))
-            time = str(selected_course.get('Time', '-'))
-            difficulty = str(selected_course.get('Difficulty', '-'))
-            teacher = str(selected_course.get('Teacher', '-'))
-            book = str(selected_course.get('Book', '-'))
-            date = str(selected_course.get('Date', '-'))
-            weekday = str(selected_course.get('Weekday', '-'))
-            
-            # Course detail card
-            card_html = f"""
-<div style='background-color: white; border-radius: 8px; padding: 24px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 8px solid {color};'>
+    # Course detail card
+    card_html = f"""
+<div style='background-color: white; border-radius: 8px; padding: 24px; border-left: 8px solid {color};'>
     <div style='font-size: 20px; font-weight: bold; color: #495057; margin-bottom: 8px;'>{date} ({weekday}) {time}</div>
     <div style='font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #212529;'>{course_name}</div>
     <div style='line-height: 2; font-size: 16px;'>
@@ -451,13 +399,60 @@ if view_mode == "Month":
     </div>
 </div>
 """
-            st.markdown(card_html, unsafe_allow_html=True)
+    st.markdown(card_html, unsafe_allow_html=True)
+
+# ============================================
+# Month View
+# ============================================
+if view_mode == "Month":
+    st.caption("💡 Month mode: Click course card to view details")
+    
+    current_date = st.session_state.current_date
+    cal = get_month_calendar(current_date.year, current_date.month)
+    
+    header_cols = st.columns(7)
+    weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    for i, col in enumerate(header_cols):
+        col.markdown(f"<div style='text-align: center; font-weight: bold; padding: 10px;'>{weekdays[i]}</div>", unsafe_allow_html=True)
+    
+    for week in cal:
+        cols = st.columns(7)
+        for i, day in enumerate(week):
+            with cols[i]:
+                if day == 0:
+                    st.markdown("<div style='height: 180px; background-color: #f8f9fa; border: 1px solid #dee2e6;'></div>", unsafe_allow_html=True)
+                else:
+                    date_str = f"{current_date.year}-{current_date.month:02d}-{day:02d}"
+                    day_classes = filtered_df[filtered_df['Date'] == date_str]
+                    
+                    # Day number
+                    st.markdown(f"<div style='font-weight: bold; font-size: 16px; padding: 4px;'>{day}</div>", unsafe_allow_html=True)
+                    
+                    # Display courses with click button integrated
+                    if len(day_classes) > 0:
+                        for idx, row in day_classes.iterrows():
+                            color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
+                            classroom = row.get('Classroom', '')
+                            button_label = f"{row['Time']} {row['CourseName']} {classroom}"
+                            button_key = f"m_{date_str}_{idx}"
+                            
+                            # Create container with color and small button
+                            col_card, col_btn = st.columns([5, 1])
+                            with col_card:
+                                st.markdown(f"""
+                                <div style='background-color: {color}; color: {TEXT_COLOR}; padding: 6px; border-radius: 4px; font-size: 13px; font-weight: 600;'>
+                                    {button_label}
+                                </div>
+                                """, unsafe_allow_html=True)
+                            with col_btn:
+                                if st.button("👁", key=button_key, help="View"):
+                                    show_course_dialog(row.to_dict())
 
 # ============================================
 # Week View
 # ============================================
 elif view_mode == "Week":
-    st.caption("💡 Week mode: Display with difficulty colors")
+    st.caption("💡 Week mode: Click course card to view details")
     
     current_date = st.session_state.current_date
     week_start = current_date - timedelta(days=current_date.weekday())
@@ -466,9 +461,6 @@ elif view_mode == "Week":
     # Get time slots
     all_times = filtered_df['Time'].unique()
     time_slots = sorted([t for t in all_times if pd.notna(t)])
-    
-    # Collect all courses in current week for selection
-    week_courses = []
     
     if len(time_slots) == 0:
         st.info("📭 No courses this week")
@@ -488,7 +480,7 @@ elif view_mode == "Week":
             
             # Time label
             with cols[0]:
-                st.markdown(f"<div style='font-weight: bold; text-align: center; font-size: 18px; padding: 10px; min-height: 100px; border: 1px solid #dee2e6;'>{time_slot}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-weight: bold; text-align: center; font-size: 18px; padding: 10px; min-height: 100px;'>{time_slot}</div>", unsafe_allow_html=True)
             
             # Courses for each day
             for i, date in enumerate(week_dates):
@@ -500,70 +492,28 @@ elif view_mode == "Week":
                 ]
                 
                 with cols[i+1]:
-                    cell_content = f"<div style='min-height: 100px; padding: 8px; border: 1px solid #dee2e6;'>"
                     if len(slot_classes) > 0:
                         for idx, row in slot_classes.iterrows():
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
                             classroom = row.get('Classroom', '')
-                            cell_content += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 10px; border-radius: 4px; margin-bottom: 6px; border-left: 4px solid rgba(0,0,0,0.3);'><div style='font-weight: 600; font-size: 15px;'>{row['CourseName']} {classroom}</div><div style='font-size: 13px; margin-top: 4px;'>{row['Teacher']}</div><div style='font-size: 13px;'>{row['Book']}</div></div>"
-                            # Add to selection list
-                            week_courses.append((f"{date_str} {time_slot} - {row['CourseName']} {classroom}", row.to_dict()))
-                    cell_content += "</div>"
-                    st.markdown(cell_content, unsafe_allow_html=True)
-        
-        # Course selection below table
-        if len(week_courses) > 0:
-            st.markdown("---")
-            st.subheader("📋 View Course Details")
-            course_options = ['Select a course...'] + [c[0] for c in week_courses]
-            
-            selected_idx = st.selectbox(
-                "Choose course:",
-                range(len(course_options)),
-                format_func=lambda x: course_options[x],
-                key="week_course_selector"
-            )
-            
-            if selected_idx > 0:
-                selected_course = week_courses[selected_idx - 1][1]
-                
-                # Display course details
-                color = DIFFICULTY_COLORS.get(selected_course.get('Difficulty', 3), "#CCCCCC")
-                
-                # Safely get syllabus name
-                syllabus_name = '-'
-                if 'SyllabusName' in selected_course and pd.notna(selected_course.get('SyllabusName')):
-                    syllabus_name = str(selected_course['SyllabusName'])
-                elif 'SyllabusID' in selected_course and pd.notna(selected_course.get('SyllabusID')):
-                    syllabus_name = str(selected_course['SyllabusID'])
-                
-                classroom = str(selected_course.get('Classroom', '-'))
-                unit = str(selected_course.get('Unit', '-'))
-                course_name = str(selected_course.get('CourseName', '-'))
-                time = str(selected_course.get('Time', '-'))
-                difficulty = str(selected_course.get('Difficulty', '-'))
-                teacher = str(selected_course.get('Teacher', '-'))
-                book = str(selected_course.get('Book', '-'))
-                date = str(selected_course.get('Date', '-'))
-                weekday = str(selected_course.get('Weekday', '-'))
-                
-                # Course detail card
-                card_html = f"""
-<div style='background-color: white; border-radius: 8px; padding: 24px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 8px solid {color};'>
-    <div style='font-size: 20px; font-weight: bold; color: #495057; margin-bottom: 8px;'>{date} ({weekday}) {time}</div>
-    <div style='font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #212529;'>{course_name}</div>
-    <div style='line-height: 2; font-size: 16px;'>
-        <div><span style='color: #6c757d; font-weight: 600;'>Classroom:</span> {classroom}</div>
-        <div><span style='color: #6c757d; font-weight: 600;'>Difficulty:</span> LV{difficulty}</div>
-        <div><span style='color: #6c757d; font-weight: 600;'>Teacher:</span> {teacher}</div>
-        <div><span style='color: #6c757d; font-weight: 600;'>Book:</span> {book}</div>
-        <div><span style='color: #6c757d; font-weight: 600;'>Unit:</span> {unit}</div>
-        <div><span style='color: #6c757d; font-weight: 600;'>Syllabus:</span> {syllabus_name}</div>
-    </div>
-</div>
-"""
-                st.markdown(card_html, unsafe_allow_html=True)
+                            button_key = f"w_{date_str}_{time_slot}_{idx}"
+                            
+                            # Create container with color and small button
+                            col_card, col_btn = st.columns([5, 1])
+                            with col_card:
+                                st.markdown(f"""
+                                <div style='background-color: {color}; color: {TEXT_COLOR}; padding: 8px; border-radius: 4px; border-left: 4px solid rgba(0,0,0,0.3); font-size: 13px;'>
+                                    <div style='font-weight: 600;'>{row['CourseName']} {classroom}</div>
+                                    <div style='font-size: 11px; margin-top: 2px;'>{row['Teacher']}</div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            with col_btn:
+                                if st.button("👁", key=button_key, help="View"):
+                                    show_course_dialog(row.to_dict())
+                    else:
+                        st.markdown("<div style='min-height: 100px;'></div>", unsafe_allow_html=True)
 
+# ============================================
 # Day View
 # ============================================
 else:
@@ -610,68 +560,6 @@ else:
 </div>
 """
             st.markdown(card_html, unsafe_allow_html=True)
-
-# ============================================
-# Course Detail Popup (for Month/Week View)
-# ============================================
-if st.session_state.get('show_course_detail', False):
-    course = st.session_state.get('selected_course', {})
-    
-    if course:
-        color = DIFFICULTY_COLORS.get(course.get('Difficulty', 3), "#CCCCCC")
-        
-        # Safely get syllabus name
-        syllabus_name = '-'
-        if 'SyllabusName' in course and pd.notna(course.get('SyllabusName')):
-            syllabus_name = str(course['SyllabusName'])
-        elif 'SyllabusID' in course and pd.notna(course.get('SyllabusID')):
-            syllabus_name = str(course['SyllabusID'])
-        
-        classroom = str(course.get('Classroom', '-'))
-        unit = str(course.get('Unit', '-'))
-        course_name = str(course.get('CourseName', '-'))
-        time = str(course.get('Time', '-'))
-        difficulty = str(course.get('Difficulty', '-'))
-        teacher = str(course.get('Teacher', '-'))
-        book = str(course.get('Book', '-'))
-        date = str(course.get('Date', '-'))
-        weekday = str(course.get('Weekday', '-'))
-        
-        # Modal dialog
-        with st.container():
-            st.markdown("---")
-            
-            # Close button
-            col1, col2, col3 = st.columns([4, 1, 1])
-            with col2:
-                if st.button("✕ Close", use_container_width=True):
-                    st.session_state.show_course_detail = False
-                    st.rerun()
-            
-            # Course detail card
-            card_html = f"""
-<div style='background-color: white; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 8px solid {color};'>
-    <div style='font-size: 20px; font-weight: bold; color: #495057; margin-bottom: 8px;'>{date} ({weekday}) {time}</div>
-    <div style='font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #212529;'>{course_name}</div>
-    <div style='line-height: 2; font-size: 16px;'>
-        <div><span style='color: #6c757d; font-weight: 600;'>Classroom:</span> {classroom}</div>
-        <div><span style='color: #6c757d; font-weight: 600;'>Difficulty:</span> LV{difficulty}</div>
-        <div><span style='color: #6c757d; font-weight: 600;'>Teacher:</span> {teacher}</div>
-        <div><span style='color: #6c757d; font-weight: 600;'>Book:</span> {book}</div>
-        <div><span style='color: #6c757d; font-weight: 600;'>Unit:</span> {unit}</div>
-        <div><span style='color: #6c757d; font-weight: 600;'>Syllabus:</span> {syllabus_name}</div>
-    </div>
-</div>
-"""
-            st.markdown(card_html, unsafe_allow_html=True)
-            
-            st.markdown("---")
-
-# ============================================
-# Footer Information
-# ============================================
-st.markdown("---")
-st.caption("🔧 Sun Kids Smart Scheduling System v1.0 | Connected to Google Sheets")
 
 # ============================================
 # Footer Information
