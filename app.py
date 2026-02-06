@@ -363,7 +363,7 @@ st.markdown("---")
 # Month View
 # ============================================
 if view_mode == "Month":
-    st.caption("💡 Month mode: Click on course to view details")
+    st.caption("💡 Month mode: Select course below calendar to view details")
     
     current_date = st.session_state.current_date
     cal = get_month_calendar(current_date.year, current_date.month)
@@ -372,6 +372,9 @@ if view_mode == "Month":
     weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     for i, col in enumerate(header_cols):
         col.markdown(f"<div style='text-align: center; font-weight: bold; padding: 10px;'>{weekdays[i]}</div>", unsafe_allow_html=True)
+    
+    # Collect all courses in current month for selection
+    month_courses = []
     
     for week in cal:
         cols = st.columns(7)
@@ -383,45 +386,41 @@ if view_mode == "Month":
                     date_str = f"{current_date.year}-{current_date.month:02d}-{day:02d}"
                     day_classes = filtered_df[filtered_df['Date'] == date_str]
                     
-                    # Display day number
-                    st.markdown(f"<div style='font-weight: bold; margin-bottom: 8px; font-size: 16px; padding: 8px;'>{day}</div>", unsafe_allow_html=True)
-                    
-                    # Display courses as clickable buttons with color
+                    # Build cell HTML with colors
+                    cards_html = ""
                     if len(day_classes) > 0:
                         for idx, row in day_classes.iterrows():
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
                             classroom = row.get('Classroom', '')
-                            button_label = f"{row['Time']} {row['CourseName']} {classroom}"
-                            
-                            # Use unique key for each button
-                            button_key = f"month_{date_str}_{idx}"
-                            
-                            # Custom button with background color
-                            st.markdown(f"""
-                            <style>
-                            div[data-testid="stButton"] > button[kind="secondary"][data-baseweb="button"][data-test="{button_key}"] {{
-                                background-color: {color} !important;
-                                color: {TEXT_COLOR} !important;
-                                border: none !important;
-                                font-weight: 600 !important;
-                            }}
-                            </style>
-                            """, unsafe_allow_html=True)
-                            
-                            if st.button(
-                                button_label,
-                                key=button_key,
-                                use_container_width=True,
-                                help="Click to view details"
-                            ):
-                                st.session_state.selected_course = row.to_dict()
-                                st.session_state.show_course_detail = True
+                            cards_html += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 6px; margin-bottom: 6px; border-radius: 4px; font-size: 14px; font-weight: 600;'>{row['Time']} {row['CourseName']} {classroom}</div>"
+                            # Add to selection list
+                            month_courses.append((f"{date_str} {row['Time']} - {row['CourseName']} {classroom}", row.to_dict()))
+                    
+                    # Complete cell HTML
+                    cell_html = f"<div style='height: 180px; border: 1px solid #dee2e6; padding: 8px; overflow-y: auto;'><div style='font-weight: bold; margin-bottom: 8px; font-size: 16px;'>{day}</div>{cards_html}</div>"
+                    st.markdown(cell_html, unsafe_allow_html=True)
+    
+    # Course selection below calendar
+    if len(month_courses) > 0:
+        st.markdown("---")
+        st.subheader("View Course Details")
+        course_options = ['Select a course...'] + [c[0] for c in month_courses]
+        selected_idx = st.selectbox(
+            "Choose course to view details:",
+            range(len(course_options)),
+            format_func=lambda x: course_options[x],
+            key="month_course_selector"
+        )
+        
+        if selected_idx > 0:
+            st.session_state.selected_course = month_courses[selected_idx - 1][1]
+            st.session_state.show_course_detail = True
 
 # ============================================
 # Week View
 # ============================================
 elif view_mode == "Week":
-    st.caption("💡 Week mode: Display course name + difficulty color + teacher name")
+    st.caption("💡 Week mode: Select course below table to view details")
     
     current_date = st.session_state.current_date
     week_start = current_date - timedelta(days=current_date.weekday())
@@ -431,52 +430,28 @@ elif view_mode == "Week":
     all_times = filtered_df['Time'].unique()
     time_slots = sorted([t for t in all_times if pd.notna(t)])
     
+    # Collect all courses in current week for selection
+    week_courses = []
+    
     if len(time_slots) == 0:
         st.info("📭 No courses this week")
     else:
-        # Calculate max courses per time slot (for uniform height)
-        time_slot_max_courses = {}
-        for time_slot in time_slots:
-            max_count = 0
-            for date in week_dates:
-                date_str = date.strftime('%Y-%m-%d')
-                count = len(filtered_df[
-                    (filtered_df['Date'] == date_str) & 
-                    (filtered_df['Time'] == time_slot)
-                ])
-                max_count = max(max_count, count)
-            time_slot_max_courses[time_slot] = max(max_count, 1)  # At least 1
-        
-        # Use table style
-        st.markdown("""
-        <style>
-        .week-table-cell {
-            border: 2px solid #dee2e6;
-            padding: 8px;
-            background-color: white;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
         # Build table header
         cols_header = st.columns([1] + [3]*7)
         with cols_header[0]:
-            st.markdown("<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 16px; min-height: 60px;'>Time</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-weight: bold; text-align: center; font-size: 16px; padding: 10px;'>Time</div>", unsafe_allow_html=True)
         for i, date in enumerate(week_dates):
             weekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday()]
             with cols_header[i+1]:
-                st.markdown(f"<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 16px; min-height: 60px;'>{date.month}/{date.day}<br>{weekday}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-weight: bold; text-align: center; font-size: 16px; padding: 10px;'>{date.month}/{date.day}<br>{weekday}</div>", unsafe_allow_html=True)
         
         # Build row for each time slot
-        for time_slot_idx, time_slot in enumerate(time_slots):
+        for time_slot in time_slots:
             cols = st.columns([1] + [3]*7)
             
             # Time label
             with cols[0]:
-                st.markdown(f"<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 18px; min-height: 100px;'>{time_slot}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-weight: bold; text-align: center; font-size: 18px; padding: 10px; min-height: 100px; border: 1px solid #dee2e6;'>{time_slot}</div>", unsafe_allow_html=True)
             
             # Courses for each day
             for i, date in enumerate(week_dates):
@@ -488,40 +463,32 @@ elif view_mode == "Week":
                 ]
                 
                 with cols[i+1]:
+                    cell_content = f"<div style='min-height: 100px; padding: 8px; border: 1px solid #dee2e6;'>"
                     if len(slot_classes) > 0:
                         for idx, row in slot_classes.iterrows():
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
                             classroom = row.get('Classroom', '')
-                            button_label = f"{row['CourseName']} {classroom}"
-                            
-                            # Use unique key for each button
-                            button_key = f"week_{date_str}_{time_slot}_{idx}"
-                            
-                            # Custom button with background color
-                            st.markdown(f"""
-                            <style>
-                            div[data-testid="stButton"] > button[kind="secondary"][data-baseweb="button"][data-test="{button_key}"] {{
-                                background-color: {color} !important;
-                                color: {TEXT_COLOR} !important;
-                                border: none !important;
-                                border-left: 4px solid rgba(0,0,0,0.3) !important;
-                                font-weight: 600 !important;
-                                padding: 10px !important;
-                                margin-bottom: 6px !important;
-                            }}
-                            </style>
-                            """, unsafe_allow_html=True)
-                            
-                            if st.button(
-                                button_label,
-                                key=button_key,
-                                use_container_width=True,
-                                help="Click to view details"
-                            ):
-                                st.session_state.selected_course = row.to_dict()
-                                st.session_state.show_course_detail = True
-                    else:
-                        st.markdown("<div style='min-height: 100px;'></div>", unsafe_allow_html=True)
+                            cell_content += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 10px; border-radius: 4px; margin-bottom: 6px; border-left: 4px solid rgba(0,0,0,0.3);'><div style='font-weight: 600; font-size: 15px;'>{row['CourseName']} {classroom}</div><div style='font-size: 13px; margin-top: 4px;'>{row['Teacher']}</div><div style='font-size: 13px;'>{row['Book']}</div></div>"
+                            # Add to selection list
+                            week_courses.append((f"{date_str} {time_slot} - {row['CourseName']} {classroom}", row.to_dict()))
+                    cell_content += "</div>"
+                    st.markdown(cell_content, unsafe_allow_html=True)
+        
+        # Course selection below table
+        if len(week_courses) > 0:
+            st.markdown("---")
+            st.subheader("View Course Details")
+            course_options = ['Select a course...'] + [c[0] for c in week_courses]
+            selected_idx = st.selectbox(
+                "Choose course to view details:",
+                range(len(course_options)),
+                format_func=lambda x: course_options[x],
+                key="week_course_selector"
+            )
+            
+            if selected_idx > 0:
+                st.session_state.selected_course = week_courses[selected_idx - 1][1]
+                st.session_state.show_course_detail = True
 
 # ============================================
 # Day View
