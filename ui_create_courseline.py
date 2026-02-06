@@ -1,6 +1,6 @@
 """
-新增課綱路線 UI 模組
-提供對話框介面讓教務長建立課綱路線
+Add Course Line UI Module
+Provides dialog interface for academic director to create course lines
 """
 
 import streamlit as st
@@ -18,13 +18,13 @@ from schedule_generator import generate_schedule
 
 def generate_courseline_id(existing_courselines):
     """
-    產生新的 CourseLineID
-    格式：C001, C002, C003...
+    Generate new CourseLineID
+    Format: C001, C002, C003...
     """
     if existing_courselines is None or len(existing_courselines) == 0:
         return "C001"
     
-    # 取得現有最大編號
+    # Get existing maximum number
     existing_ids = existing_courselines['CourseLineID'].tolist()
     numbers = []
     for cid in existing_ids:
@@ -42,213 +42,271 @@ def generate_courseline_id(existing_courselines):
 
 def auto_assign_classroom(df_courseline, weekday, time):
     """
-    根據同時段課程數量自動分配教室
+    Automatically assign classroom based on concurrent courses
     
     Parameters:
     - df_courseline: Config_CourseLine DataFrame
-    - weekday: 星期（1-7）
-    - time: 時間（HH:MM）
+    - weekday: Weekday (1-7)
+    - time: Time (HH:MM)
     
     Returns:
-    - str: 教室名稱（A教室、B教室...）
+    - str: Classroom name (A, B, C...)
     """
     if df_courseline is None or len(df_courseline) == 0:
-        return "A教室"
+        return "A"
     
-    # 檢查同時段已有幾堂課
+    # Check how many courses at the same time
     same_time_courses = df_courseline[
         (df_courseline['Weekday'] == weekday) & 
         (df_courseline['Time'] == time)
     ]
     
-    # 計算已使用的教室數量
+    # Calculate number of used classrooms
     count = len(same_time_courses)
     
-    # 分配下一個教室（A, B, C, D...）
+    # Assign next classroom (A, B, C, D...)
     classroom_letter = chr(65 + count)  # 65 = 'A'
     
-    return f"{classroom_letter}教室"
+    return classroom_letter
 
 def show_create_courseline_dialog():
     """
-    顯示新增課綱路線對話框
+    Display add course line dialog
     """
-    st.subheader("➕ 新增課綱路線")
+    st.subheader("Add Course Line")
     
-    # 載入基礎資料
+    # Load base data
     df_syllabus = load_config_syllabus()
     df_teacher = load_config_teacher()
     df_courseline = load_config_courseline()
     
     if df_syllabus is None or len(df_syllabus) == 0:
-        st.error("❌ 請先在 Config_Syllabus 建立課綱")
+        st.error("Please create syllabus in Config_Syllabus first")
         return
     
     if df_teacher is None or len(df_teacher) == 0:
-        st.error("❌ 請先在 Config_Teacher 建立講師資料")
+        st.error("Please create teacher data in Config_Teacher first")
         return
     
-    # 取得課綱選項
+    # Get syllabus options
     syllabus_options = df_syllabus[['SyllabusID', 'SyllabusName', 'Level_ID']].drop_duplicates()
     syllabus_dict = {}
     for _, row in syllabus_options.iterrows():
         key = f"{row['SyllabusID']} - {row['SyllabusName']} ({row['Level_ID']})"
         syllabus_dict[key] = row['SyllabusID']
     
-    # 取得老師選項
+    # Get teacher options
     teacher_options = {}
     for _, row in df_teacher.iterrows():
         key = f"{row['Teacher_ID']} - {row['Teacher_Name']}"
         teacher_options[key] = row['Teacher_ID']
     
-    # 表單
+    # Initialize session state (outside form)
+    if 'time_slots' not in st.session_state:
+        st.session_state.time_slots = [{'weekday': 1, 'time': '19:00'}]
+    
+    # Form
     with st.form("create_courseline_form"):
-        # 課程名稱
+        # Course name
         course_name = st.text_input(
-            "課程名稱 *",
-            placeholder="例如：快樂A班",
-            help="家長看到的課程名稱"
+            "Course Name *",
+            placeholder="e.g., Happy Class A"
         )
         
-        # 選擇課綱
+        # Select syllabus
         selected_syllabus_key = st.selectbox(
-            "選擇課綱 *",
-            options=list(syllabus_dict.keys()),
-            help="決定使用哪個教材循環"
+            "Select Syllabus *",
+            options=list(syllabus_dict.keys())
         )
         syllabus_id = syllabus_dict[selected_syllabus_key]
         
-        # 顯示該課綱的教材列表
-        with st.expander("📚 查看課綱內容"):
+        # Display syllabus content
+        with st.expander("View Syllabus Content"):
             syllabus_detail = df_syllabus[df_syllabus['SyllabusID'] == syllabus_id]
-            # 相容舊欄位名稱
             display_columns = ['Sequence', 'Book_Full_Name']
             if 'Unit' in syllabus_detail.columns:
                 display_columns.append('Unit')
             elif 'Chapters' in syllabus_detail.columns:
                 display_columns.append('Chapters')
             
+            # Build display DataFrame with string conversion
+            display_df = syllabus_detail[display_columns].copy()
+            if 'Unit' in display_df.columns:
+                display_df['Unit'] = display_df['Unit'].astype(str)
+            if 'Chapters' in display_df.columns:
+                display_df['Chapters'] = display_df['Chapters'].astype(str)
+            
             st.dataframe(
-                syllabus_detail[display_columns],
-                use_container_width=True,
+                display_df,
+                width='stretch',
                 hide_index=True
             )
         
-        # 上課時間
-        col1, col2 = st.columns(2)
-        with col1:
-            weekday = st.selectbox(
-                "上課星期 *",
-                options=[
-                    ("週一", 1), ("週二", 2), ("週三", 3), ("週四", 4),
-                    ("週五", 5), ("週六", 6), ("週日", 7)
-                ],
-                format_func=lambda x: x[0]
-            )[1]
+        st.markdown("---")
         
-        with col2:
-            time = st.time_input(
-                "上課時間 *",
-                value=datetime.strptime("19:00", "%H:%M").time(),
-                help="開始時間（24小時制）"
-            ).strftime("%H:%M")
+        # Schedule times (multiple slots)
+        st.write("**Schedule Times *")
         
-        # 自動分配教室（根據選擇的星期和時間）
-        assigned_classroom = auto_assign_classroom(df_courseline, weekday, time)
+        # Hour options (0-23)
+        hour_options = [f"{h:02d}:00" for h in range(24)]
         
-        # 顯示自動分配的教室（不可編輯）
-        st.info(f"📍 教室：**{assigned_classroom}** （系統根據同時段課程數量自動分配）")
-        classroom = assigned_classroom
+        # Display all time slots
+        time_slots = []
+        for idx in range(len(st.session_state.time_slots)):
+            slot = st.session_state.time_slots[idx]
+            col1, col2, col3 = st.columns([2, 2, 1])
+            
+            with col1:
+                weekday_val = st.selectbox(
+                    f"Weekday {idx+1}",
+                    options=[
+                        ("Mon", 1), ("Tue", 2), ("Wed", 3), ("Thu", 4),
+                        ("Fri", 5), ("Sat", 6), ("Sun", 7)
+                    ],
+                    format_func=lambda x: x[0],
+                    index=slot['weekday']-1,
+                    key=f"weekday_{idx}"
+                )[1]
+            
+            with col2:
+                time_val = st.selectbox(
+                    f"Time {idx+1}",
+                    options=hour_options,
+                    index=hour_options.index(slot['time']) if slot['time'] in hour_options else 19,
+                    key=f"time_{idx}"
+                )
+            
+            with col3:
+                if idx > 0:
+                    if st.form_submit_button("🗑️", key=f"remove_{idx}"):
+                        st.session_state.time_slots.pop(idx)
+                        st.rerun()
+            
+            time_slots.append({'weekday': weekday_val, 'time': time_val})
         
-        # 選擇老師
+        # Update session state
+        st.session_state.time_slots = time_slots
+        
+        # Add time slot button (outside form, use form_submit_button)
+        if len(st.session_state.time_slots) < 7:
+            col_add1, col_add2, col_add3 = st.columns([1, 1, 1])
+            with col_add2:
+                if st.form_submit_button("Add Time Slot", use_container_width=True):
+                    st.session_state.time_slots.append({'weekday': 1, 'time': '19:00'})
+                    st.rerun()
+        
+        st.markdown("---")
+        
+        # Select teacher
         selected_teacher_key = st.selectbox(
-            "選擇老師 *",
+            "Select Teacher *",
             options=list(teacher_options.keys())
         )
         teacher_id = teacher_options[selected_teacher_key]
         
-        # 開課日期
+        # Start date
         start_date = st.date_input(
-            "開課日期 *",
-            value=datetime.now().date(),
-            help="第一次上課的日期"
+            "Start Date *",
+            value=datetime.now().date()
         )
         
-        # 檢查開課日期與上課星期是否一致
-        start_weekday = start_date.weekday() + 1  # Python: 0=週一, 轉換為 1=週一
-        if start_weekday == 7:
-            start_weekday = 7  # 週日
+        # Number of weeks
+        weeks = st.selectbox(
+            "Generate Schedule for (weeks) *",
+            options=list(range(1, 53)),
+            index=11  # Default 12 weeks
+        )
         
-        if weekday != start_weekday:
-            weekday_names = {1: "週一", 2: "週二", 3: "週三", 4: "週四", 5: "週五", 6: "週六", 7: "週日"}
-            st.warning(f"⚠️ 注意：開課日期（{start_date.strftime('%Y-%m-%d')}）是 {weekday_names[start_weekday]}，但上課星期設定為 {weekday_names[weekday]}")
-            st.info(f"💡 系統會自動從開課日期後的第一個「{weekday_names[weekday]}」開始上課")
-        
-        # 備註
+        # Note
         note = st.text_area(
-            "備註",
-            placeholder="選填",
+            "Note",
+            placeholder="Optional",
             height=80
         )
         
-        # 提交按鈕
+        # Submit button
         col_submit1, col_submit2, col_submit3 = st.columns([1, 1, 1])
         with col_submit2:
             submitted = st.form_submit_button(
-                "✅ 建立課綱路線",
+                "Create Course Line",
                 use_container_width=True,
                 type="primary"
             )
         
         if submitted:
-            # 驗證
+            # Validation
             if not course_name:
-                st.error("❌ 請輸入課程名稱")
+                st.error("Please enter course name")
                 return
             
-            # 產生 CourseLineID
+            # Generate CourseLineID (shared by all time slots)
             courseline_id = generate_courseline_id(df_courseline)
             
-            # 建立課綱路線資料（固定從第 1 個教材開始）
-            courseline_data = {
-                'CourseLineID': courseline_id,
-                'CourseName': course_name,
-                'SyllabusID': syllabus_id,
-                'Weekday': weekday,
-                'Time': time,
-                'Classroom': classroom,
-                'Teacher_ID': teacher_id,
-                'Start_Date': start_date.strftime('%Y-%m-%d'),
-                'Start_Sequence': 1,  # 固定從第 1 個教材開始
-                'Status': '進行中',
-                'Note': note
-            }
-            
-            # 寫入 Config_CourseLine
-            with st.spinner("正在建立課綱路線..."):
-                success = append_courseline(courseline_data)
+            # Write to Config_CourseLine
+            with st.spinner("Creating course line..."):
+                all_success = True
+                total_schedules = 0
                 
-                if success:
-                    # 產生排程
-                    st.info("正在產生未來課程...")
-                    schedule = generate_schedule(
-                        courseline_data, 
-                        df_syllabus, 
-                        weeks=12
-                    )
+                # Create course line for each time slot
+                for idx, slot in enumerate(time_slots):
+                    weekday = slot['weekday']
+                    time = slot['time']
                     
-                    if len(schedule) > 0:
-                        # 追加至 Master_Schedule（不覆蓋現有資料）
-                        from sheets_handler import append_master_schedule
-                        write_success = append_master_schedule(schedule)
+                    # Auto-assign classroom
+                    classroom = auto_assign_classroom(df_courseline, weekday, time)
+                    
+                    # Build course line data
+                    courseline_data = {
+                        'CourseLineID': courseline_id,
+                        'CourseName': course_name,
+                        'SyllabusID': syllabus_id,
+                        'Weekday': weekday,
+                        'Time': time,
+                        'Classroom': classroom,
+                        'Teacher_ID': teacher_id,
+                        'Start_Date': start_date.strftime('%Y-%m-%d'),
+                        'Start_Sequence': 1,
+                        'Status': 'Active',
+                        'Note': note
+                    }
+                    
+                    # Write to Config_CourseLine
+                    success = append_courseline(courseline_data)
+                    
+                    if success:
+                        # Generate schedule
+                        schedule = generate_schedule(
+                            courseline_data, 
+                            df_syllabus, 
+                            weeks=weeks
+                        )
                         
-                        if write_success:
-                            st.success(f"✅ 成功建立課綱路線：{courseline_id}")
+                        if len(schedule) > 0:
+                            # Append to Master_Schedule
+                            from sheets_handler import append_master_schedule
+                            write_success = append_master_schedule(schedule)
                             
-                            # 清除快取
-                            clear_cache()
-                            
-                            # 重新載入頁面
-                            st.rerun()
+                            if write_success:
+                                total_schedules += len(schedule)
+                            else:
+                                all_success = False
+                        else:
+                            all_success = False
                     else:
-                        st.error("❌ 無法產生課程，請檢查設定")
+                        all_success = False
+                
+                if all_success:
+                    st.success(f"Successfully created course line: {courseline_id}")
+                    st.info(f"Generated {total_schedules} course records ({len(time_slots)} slots x {weeks} weeks)")
+                    
+                    # Clear cache
+                    clear_cache()
+                    
+                    # Clear time_slots session state
+                    if 'time_slots' in st.session_state:
+                        del st.session_state.time_slots
+                    
+                    # Reload page
+                    st.rerun()
+                else:
+                    st.error("Some time slots failed to create")
