@@ -14,7 +14,8 @@ from sheets_handler import (
     write_master_schedule,
     clear_cache
 )
-from schedule_generator import generate_schedule
+# [修改] 引用新的交錯排課函式
+from schedule_generator import generate_interleaved_schedule
 
 def generate_courseline_id(existing_courselines):
     """
@@ -43,14 +44,6 @@ def generate_courseline_id(existing_courselines):
 def auto_assign_classroom(df_courseline, weekday, time):
     """
     Automatically assign classroom based on concurrent courses
-    
-    Parameters:
-    - df_courseline: Config_CourseLine DataFrame
-    - weekday: Weekday (1-7)
-    - time: Time (HH:MM)
-    
-    Returns:
-    - str: Classroom name (A, B, C...)
     """
     if df_courseline is None or len(df_courseline) == 0:
         return "A"
@@ -129,28 +122,20 @@ def show_create_courseline_dialog():
             elif 'Chapters' in syllabus_detail.columns:
                 display_columns.append('Chapters')
             
-            # Build display DataFrame with string conversion
             display_df = syllabus_detail[display_columns].copy()
             if 'Unit' in display_df.columns:
                 display_df['Unit'] = display_df['Unit'].astype(str)
             if 'Chapters' in display_df.columns:
                 display_df['Chapters'] = display_df['Chapters'].astype(str)
             
-            st.dataframe(
-                display_df,
-                width='stretch',
-                hide_index=True
-            )
+            st.dataframe(display_df, width='stretch', hide_index=True)
         
         st.markdown("---")
         
-        # Schedule times (multiple slots)
+        # Schedule times
         st.write("**Schedule Times *")
-        
-        # Hour options (0-23)
         hour_options = [f"{h:02d}:00" for h in range(24)]
         
-        # Display all time slots
         time_slots = []
         for idx in range(len(st.session_state.time_slots)):
             slot = st.session_state.time_slots[idx]
@@ -159,10 +144,7 @@ def show_create_courseline_dialog():
             with col1:
                 weekday_val = st.selectbox(
                     f"Weekday {idx+1}",
-                    options=[
-                        ("Mon", 1), ("Tue", 2), ("Wed", 3), ("Thu", 4),
-                        ("Fri", 5), ("Sat", 6), ("Sun", 7)
-                    ],
+                    options=[("Mon", 1), ("Tue", 2), ("Wed", 3), ("Thu", 4), ("Fri", 5), ("Sat", 6), ("Sun", 7)],
                     format_func=lambda x: x[0],
                     index=slot['weekday']-1,
                     key=f"weekday_{idx}"
@@ -184,10 +166,8 @@ def show_create_courseline_dialog():
             
             time_slots.append({'weekday': weekday_val, 'time': time_val})
         
-        # Update session state
         st.session_state.time_slots = time_slots
         
-        # Add time slot button (outside form, use form_submit_button)
         if len(st.session_state.time_slots) < 7:
             col_add1, col_add2, col_add3 = st.columns([1, 1, 1])
             with col_add2:
@@ -214,27 +194,16 @@ def show_create_courseline_dialog():
         weeks = st.selectbox(
             "Generate Schedule for (weeks) *",
             options=list(range(1, 53)),
-            index=11  # Default 12 weeks
+            index=11
         )
         
-        # Note
-        note = st.text_area(
-            "Note",
-            placeholder="Optional",
-            height=80
-        )
+        note = st.text_area("Note", placeholder="Optional", height=80)
         
-        # Submit button
         col_submit1, col_submit2, col_submit3 = st.columns([1, 1, 1])
         with col_submit2:
-            submitted = st.form_submit_button(
-                "Create Course Line",
-                use_container_width=True,
-                type="primary"
-            )
+            submitted = st.form_submit_button("Create Course Line", use_container_width=True, type="primary")
         
         if submitted:
-            # Validation
             if not course_name:
                 st.error("Please enter course name")
                 return
@@ -242,20 +211,17 @@ def show_create_courseline_dialog():
             # Generate CourseLineID (shared by all time slots)
             courseline_id = generate_courseline_id(df_courseline)
             
-            # Write to Config_CourseLine
             with st.spinner("Creating course line..."):
                 all_success = True
-                total_schedules = 0
+                created_configs = [] # [新增] 收集所有建立的設定檔
                 
-                # Create course line for each time slot
+                # 1. 先將所有時段寫入 Config_CourseLine
                 for idx, slot in enumerate(time_slots):
                     weekday = slot['weekday']
                     time = slot['time']
                     
-                    # Auto-assign classroom
                     classroom = auto_assign_classroom(df_courseline, weekday, time)
                     
-                    # Build course line data
                     courseline_data = {
                         'CourseLineID': courseline_id,
                         'CourseName': course_name,
@@ -266,47 +232,39 @@ def show_create_courseline_dialog():
                         'Teacher_ID': teacher_id,
                         'Start_Date': start_date.strftime('%Y-%m-%d'),
                         'Start_Sequence': 1,
-                        'Status': 'Active',
+                        'Status': '進行中', # 統一使用中文狀態與 generator 配合
                         'Note': note
                     }
                     
-                    # Write to Config_CourseLine
                     success = append_courseline(courseline_data)
-                    
                     if success:
-                        # Generate schedule
-                        schedule = generate_schedule(
-                            courseline_data, 
-                            df_syllabus, 
-                            weeks=weeks
-                        )
-                        
-                        if len(schedule) > 0:
-                            # Append to Master_Schedule
-                            from sheets_handler import append_master_schedule
-                            write_success = append_master_schedule(schedule)
-                            
-                            if write_success:
-                                total_schedules += len(schedule)
-                            else:
-                                all_success = False
-                        else:
-                            all_success = False
+                        created_configs.append(courseline_data)
                     else:
                         all_success = False
                 
-                if all_success:
-                    st.success(f"Successfully created course line: {courseline_id}")
-                    st.info(f"Generated {total_schedules} course records ({len(time_slots)} slots x {weeks} weeks)")
+                # 2. 如果設定檔都寫入成功，執行一次性「交錯排課」
+                if all_success and created_configs:
+                    # [關鍵修改] 呼叫交錯排課函式
+                    schedule = generate_interleaved_schedule(
+                        created_configs, 
+                        df_syllabus, 
+                        weeks=weeks
+                    )
                     
-                    # Clear cache
-                    clear_cache()
-                    
-                    # Clear time_slots session state
-                    if 'time_slots' in st.session_state:
-                        del st.session_state.time_slots
-                    
-                    # Reload page
-                    st.rerun()
+                    if len(schedule) > 0:
+                        from sheets_handler import append_master_schedule
+                        write_success = append_master_schedule(schedule)
+                        
+                        if write_success:
+                            st.success(f"Successfully created course line: {courseline_id}")
+                            st.info(f"Generated {len(schedule)} course records (Shared progress across {len(time_slots)} slots)")
+                            clear_cache()
+                            if 'time_slots' in st.session_state:
+                                del st.session_state.time_slots
+                            st.rerun()
+                        else:
+                            st.error("Failed to write to Master_Schedule")
+                    else:
+                        st.warning("No schedule generated (check syllabus data)")
                 else:
-                    st.error("Some time slots failed to create")
+                    st.error("Some time slots failed to create in Config")
