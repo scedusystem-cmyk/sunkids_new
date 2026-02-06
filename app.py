@@ -107,18 +107,11 @@ def load_schedule_data():
             # If no teacher data, use Teacher_ID
             df_schedule['Teacher'] = df_schedule['Teacher_ID']
         
-        # Load Config_Syllabus to get syllabus names
+        # Load Config_Syllabus (for other purposes if needed)
         df_syllabus = load_config_syllabus()
         
-        if df_syllabus is not None and len(df_syllabus) > 0:
-            # Get unique syllabus list (SyllabusID + SyllabusName)
-            syllabus_unique = df_syllabus[['SyllabusID', 'SyllabusName']].drop_duplicates()
-            # Merge syllabus names
-            df_schedule = df_schedule.merge(
-                syllabus_unique,
-                on='SyllabusID',
-                how='left'
-            )
+        # Note: SyllabusName is already in Master_Schedule, no merge needed
+        # Each row has its own SyllabusName based on the weekly sequence
         
         # Organize column names (only rename what needs to be changed)
         if 'Book_Full_Name' in df_schedule.columns:

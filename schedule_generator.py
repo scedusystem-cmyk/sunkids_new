@@ -70,6 +70,7 @@ def generate_schedule(courseline_config, syllabus_config, weeks=12):
             'CourseLineID': courseline_id,
             'CourseName': course_name,
             'SyllabusID': syllabus_id,
+            'SyllabusName': book_info.get('SyllabusName', ''),  # 加入每週課綱名稱
             'Date': class_date.strftime('%Y-%m-%d'),
             'Weekday': ['週一', '週二', '週三', '週四', '週五', '週六', '週日'][class_date.weekday()],
             'Time': time,
