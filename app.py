@@ -428,7 +428,7 @@ if view_mode == "Month":
                     # Day number
                     st.markdown(f"<div style='font-weight: bold; font-size: 16px; padding: 4px;'>{day}</div>", unsafe_allow_html=True)
                     
-                    # Display courses as colored buttons
+                    # Display courses as clickable colored buttons
                     if len(day_classes) > 0:
                         for idx, row in day_classes.iterrows():
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
@@ -436,15 +436,22 @@ if view_mode == "Month":
                             button_label = f"{row['Time']} {row['CourseName']} {classroom}"
                             button_key = f"month_{date_str}_{idx}"
                             
-                            # Colored background
+                            # Style the button to look like colored block
                             st.markdown(f"""
-                            <div style='background-color: {color}; color: {TEXT_COLOR}; border-radius: 4px; margin-bottom: 4px; padding: 6px; font-size: 13px; font-weight: 600;'>
-                                {button_label}
-                            </div>
+                            <style>
+                            button[data-testid="baseButton-secondary"][key="{button_key}"] {{
+                                background-color: {color} !important;
+                                color: {TEXT_COLOR} !important;
+                                border: none !important;
+                                padding: 8px !important;
+                                font-weight: 600 !important;
+                                text-align: left !important;
+                                width: 100% !important;
+                            }}
+                            </style>
                             """, unsafe_allow_html=True)
                             
-                            # Hidden clickable button
-                            if st.button("📋", key=button_key, help="View details", use_container_width=True):
+                            if st.button(button_label, key=button_key, type="secondary", use_container_width=True):
                                 show_course_dialog(row.to_dict())
 
 # ============================================
@@ -498,15 +505,23 @@ elif view_mode == "Week":
                             button_label = f"{row['CourseName']} {classroom}"
                             button_key = f"week_{date_str}_{time_slot}_{idx}"
                             
-                            # Colored background
+                            # Style the button to look like colored block
                             st.markdown(f"""
-                            <div style='background-color: {color}; color: {TEXT_COLOR}; border-radius: 4px; margin-bottom: 4px; padding: 8px; border-left: 4px solid rgba(0,0,0,0.3); font-size: 14px; font-weight: 600;'>
-                                {button_label}
-                            </div>
+                            <style>
+                            button[data-testid="baseButton-secondary"][key="{button_key}"] {{
+                                background-color: {color} !important;
+                                color: {TEXT_COLOR} !important;
+                                border: none !important;
+                                border-left: 4px solid rgba(0,0,0,0.3) !important;
+                                padding: 10px !important;
+                                font-weight: 600 !important;
+                                text-align: left !important;
+                                width: 100% !important;
+                            }}
+                            </style>
                             """, unsafe_allow_html=True)
                             
-                            # Hidden clickable button
-                            if st.button("📋", key=button_key, help="View details", use_container_width=True):
+                            if st.button(button_label, key=button_key, type="secondary", use_container_width=True):
                                 show_course_dialog(row.to_dict())
 
                     cell_content += "</div>"
