@@ -516,13 +516,15 @@ elif view_mode == "Week":
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
                             classroom = row.get('Classroom', '')
                             
-                            cell_content += f"""
-                            <div style='background-color: {color}; color: {TEXT_COLOR}; padding: 8px; border-radius: 4px; margin-bottom: 6px; border-left: 4px solid rgba(0,0,0,0.3);'>
-                                <div style='font-weight: 600; font-size: 14px;'>{row['CourseName']} {classroom}</div>
-                                <div style='font-size: 12px; margin-top: 4px;'>{row['Teacher']}</div>
-                                <div style='font-size: 12px;'>{row.get('Book', '-')}</div>
-                            </div>
-                            """
+                            # FIX: Removed indentation from f-string to prevent Markdown code block interpretation
+                            card_html = f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 8px; border-radius: 4px; margin-bottom: 6px; border-left: 4px solid rgba(0,0,0,0.3);'>"
+                            card_html += f"<div style='font-weight: 600; font-size: 14px;'>{row['CourseName']} {classroom}</div>"
+                            card_html += f"<div style='font-size: 12px; margin-top: 4px;'>{row['Teacher']}</div>"
+                            card_html += f"<div style='font-size: 12px;'>{row.get('Book', '-')}</div>"
+                            card_html += "</div>"
+                            
+                            cell_content += card_html
+                            
                             # Add to selection list
                             week_courses.append((f"{date_str} {time_slot} - {row['CourseName']} {classroom}", row.to_dict()))
                     
@@ -684,12 +686,6 @@ if st.session_state.get('show_course_detail', False):
             st.markdown(card_html, unsafe_allow_html=True)
             
             st.markdown("---")
-
-# ============================================
-# Footer Information
-# ============================================
-st.markdown("---")
-st.caption("🔧 Sun Kids Smart Scheduling System v1.0 | Connected to Google Sheets")
 
 # ============================================
 # Footer Information
