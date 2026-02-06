@@ -473,22 +473,37 @@ elif view_mode == "Week":
     if len(time_slots) == 0:
         st.info("📭 No courses this week")
     else:
+        # Calculate max courses per time slot for consistent height
+        time_slot_heights = {}
+        for time_slot in time_slots:
+            max_courses = 0
+            for date in week_dates:
+                date_str = date.strftime('%Y-%m-%d')
+                count = len(filtered_df[
+                    (filtered_df['Date'] == date_str) & 
+                    (filtered_df['Time'] == time_slot)
+                ])
+                max_courses = max(max_courses, count)
+            # Calculate height: base 60px + 70px per course
+            time_slot_heights[time_slot] = max(100, 60 + max_courses * 70)
+        
         # Table header
         cols_header = st.columns([1] + [3]*7)
         with cols_header[0]:
-            st.markdown("<div style='font-weight: bold; text-align: center; font-size: 16px; padding: 10px;'>Time</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-weight: bold; text-align: center; font-size: 16px; padding: 10px; border: 1px solid #dee2e6; background-color: #f8f9fa;'>Time</div>", unsafe_allow_html=True)
         for i, date in enumerate(week_dates):
             weekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday()]
             with cols_header[i+1]:
-                st.markdown(f"<div style='font-weight: bold; text-align: center; font-size: 16px; padding: 10px;'>{date.month}/{date.day}<br>{weekday}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-weight: bold; text-align: center; font-size: 16px; padding: 10px; border: 1px solid #dee2e6; background-color: #f8f9fa;'>{date.month}/{date.day}<br>{weekday}</div>", unsafe_allow_html=True)
         
         # Rows for each time slot
         for time_slot in time_slots:
             cols = st.columns([1] + [3]*7)
+            cell_height = time_slot_heights[time_slot]
             
             # Time label
             with cols[0]:
-                st.markdown(f"<div style='font-weight: bold; text-align: center; font-size: 18px; padding: 10px; min-height: 100px; border: 1px solid #dee2e6;'>{time_slot}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-weight: bold; text-align: center; font-size: 18px; padding: 10px; height: {cell_height}px; border: 1px solid #dee2e6; background-color: #f8f9fa; display: flex; align-items: center; justify-content: center;'>{time_slot}</div>", unsafe_allow_html=True)
             
             # Courses for each day
             for i, date in enumerate(week_dates):
@@ -500,14 +515,24 @@ elif view_mode == "Week":
                 ]
                 
                 with cols[i+1]:
-                    cell_content = f"<div style='min-height: 100px; padding: 8px; border: 1px solid #dee2e6;'>"
+                    # Build cell with consistent height
+                    cell_content = f"<div style='height: {cell_height}px; padding: 8px; border: 1px solid #dee2e6; background-color: white; overflow-y: auto;'>"
+                    
                     if len(slot_classes) > 0:
                         for idx, row in slot_classes.iterrows():
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
                             classroom = row.get('Classroom', '')
-                            cell_content += f"<div style='background-color: {color}; color: {TEXT_COLOR}; padding: 10px; border-radius: 4px; margin-bottom: 6px; border-left: 4px solid rgba(0,0,0,0.3);'><div style='font-weight: 600; font-size: 15px;'>{row['CourseName']} {classroom}</div><div style='font-size: 13px; margin-top: 4px;'>{row['Teacher']}</div><div style='font-size: 13px;'>{row['Book']}</div></div>"
+                            
+                            cell_content += f"""
+                            <div style='background-color: {color}; color: {TEXT_COLOR}; padding: 8px; border-radius: 4px; margin-bottom: 6px; border-left: 4px solid rgba(0,0,0,0.3);'>
+                                <div style='font-weight: 600; font-size: 14px;'>{row['CourseName']} {classroom}</div>
+                                <div style='font-size: 12px; margin-top: 4px;'>{row['Teacher']}</div>
+                                <div style='font-size: 12px;'>{row.get('Book', '-')}</div>
+                            </div>
+                            """
                             # Add to selection list
                             week_courses.append((f"{date_str} {time_slot} - {row['CourseName']} {classroom}", row.to_dict()))
+                    
                     cell_content += "</div>"
                     st.markdown(cell_content, unsafe_allow_html=True)
         
