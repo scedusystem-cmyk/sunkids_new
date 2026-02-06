@@ -425,8 +425,10 @@ if view_mode == "Month":
                     date_str = f"{current_date.year}-{current_date.month:02d}-{day:02d}"
                     day_classes = filtered_df[filtered_df['Date'] == date_str]
                     
-                    # Day number
-                    st.markdown(f"<div style='font-weight: bold; font-size: 16px; padding: 4px;'>{day}</div>", unsafe_allow_html=True)
+                    # Container with border
+                    cell_html = f"<div style='border: 1px solid #dee2e6; padding: 8px; min-height: 180px;'>"
+                    cell_html += f"<div style='font-weight: bold; font-size: 16px; margin-bottom: 8px;'>{day}</div>"
+                    st.markdown(cell_html, unsafe_allow_html=True)
                     
                     # Display courses with click button integrated
                     if len(day_classes) > 0:
@@ -445,8 +447,11 @@ if view_mode == "Month":
                                 </div>
                                 """, unsafe_allow_html=True)
                             with col_btn:
-                                if st.button("👁", key=button_key, help="View"):
+                                if st.button("📋", key=button_key, help="Details"):
                                     show_course_dialog(row.to_dict())
+                    
+                    # Close cell div
+                    st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================
 # Week View
@@ -480,7 +485,7 @@ elif view_mode == "Week":
             
             # Time label
             with cols[0]:
-                st.markdown(f"<div style='font-weight: bold; text-align: center; font-size: 18px; padding: 10px; min-height: 100px;'>{time_slot}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-weight: bold; text-align: center; font-size: 18px; padding: 10px; min-height: 100px; border: 1px solid #dee2e6;'>{time_slot}</div>", unsafe_allow_html=True)
             
             # Courses for each day
             for i, date in enumerate(week_dates):
@@ -492,6 +497,9 @@ elif view_mode == "Week":
                 ]
                 
                 with cols[i+1]:
+                    # Cell with border
+                    st.markdown("<div style='border: 1px solid #dee2e6; padding: 8px; min-height: 100px;'>", unsafe_allow_html=True)
+                    
                     if len(slot_classes) > 0:
                         for idx, row in slot_classes.iterrows():
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
@@ -508,10 +516,11 @@ elif view_mode == "Week":
                                 </div>
                                 """, unsafe_allow_html=True)
                             with col_btn:
-                                if st.button("👁", key=button_key, help="View"):
+                                if st.button("📋", key=button_key, help="Details"):
                                     show_course_dialog(row.to_dict())
-                    else:
-                        st.markdown("<div style='min-height: 100px;'></div>", unsafe_allow_html=True)
+                    
+                    # Close cell div
+                    st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================
 # Day View
