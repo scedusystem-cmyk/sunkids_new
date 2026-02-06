@@ -386,7 +386,7 @@ if view_mode == "Month":
                     # Display day number
                     st.markdown(f"<div style='font-weight: bold; margin-bottom: 8px; font-size: 16px; padding: 8px;'>{day}</div>", unsafe_allow_html=True)
                     
-                    # Display courses as clickable buttons
+                    # Display courses as clickable buttons with color
                     if len(day_classes) > 0:
                         for idx, row in day_classes.iterrows():
                             color = DIFFICULTY_COLORS.get(row['Difficulty'], "#CCCCCC")
@@ -395,6 +395,18 @@ if view_mode == "Month":
                             
                             # Use unique key for each button
                             button_key = f"month_{date_str}_{idx}"
+                            
+                            # Custom button with background color
+                            st.markdown(f"""
+                            <style>
+                            div[data-testid="stButton"] > button[kind="secondary"][data-baseweb="button"][data-test="{button_key}"] {{
+                                background-color: {color} !important;
+                                color: {TEXT_COLOR} !important;
+                                border: none !important;
+                                font-weight: 600 !important;
+                            }}
+                            </style>
+                            """, unsafe_allow_html=True)
                             
                             if st.button(
                                 button_label,
@@ -459,15 +471,12 @@ elif view_mode == "Week":
                 st.markdown(f"<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 16px; min-height: 60px;'>{date.month}/{date.day}<br>{weekday}</div>", unsafe_allow_html=True)
         
         # Build row for each time slot
-        for time_slot in time_slots:
+        for time_slot_idx, time_slot in enumerate(time_slots):
             cols = st.columns([1] + [3]*7)
-            
-            # Calculate uniform height for this time slot
-            cell_height = 80 + (time_slot_max_courses[time_slot] * 110)
             
             # Time label
             with cols[0]:
-                st.markdown(f"<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 18px; min-height: {cell_height}px;'>{time_slot}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='week-table-cell' style='font-weight: bold; text-align: center; font-size: 18px; min-height: 100px;'>{time_slot}</div>", unsafe_allow_html=True)
             
             # Courses for each day
             for i, date in enumerate(week_dates):
@@ -488,6 +497,21 @@ elif view_mode == "Week":
                             # Use unique key for each button
                             button_key = f"week_{date_str}_{time_slot}_{idx}"
                             
+                            # Custom button with background color
+                            st.markdown(f"""
+                            <style>
+                            div[data-testid="stButton"] > button[kind="secondary"][data-baseweb="button"][data-test="{button_key}"] {{
+                                background-color: {color} !important;
+                                color: {TEXT_COLOR} !important;
+                                border: none !important;
+                                border-left: 4px solid rgba(0,0,0,0.3) !important;
+                                font-weight: 600 !important;
+                                padding: 10px !important;
+                                margin-bottom: 6px !important;
+                            }}
+                            </style>
+                            """, unsafe_allow_html=True)
+                            
                             if st.button(
                                 button_label,
                                 key=button_key,
@@ -497,7 +521,7 @@ elif view_mode == "Week":
                                 st.session_state.selected_course = row.to_dict()
                                 st.session_state.show_course_detail = True
                     else:
-                        st.markdown(f"<div style='min-height: {cell_height}px;'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='min-height: 100px;'></div>", unsafe_allow_html=True)
 
 # ============================================
 # Day View
